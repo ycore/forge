@@ -1,0 +1,1 @@
+function e(r,t){if(!t)return{...r};let o={...r};for(let r of Object.keys(t)){let l=t[r];null===l||"object"!=typeof l||Array.isArray(l)||null===o[r]||"object"!=typeof o[r]||Array.isArray(o[r])?void 0!==l&&(o[r]=l):o[r]=e(o[r],l)}return o}export{e as deepMerge};

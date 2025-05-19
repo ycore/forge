@@ -1,0 +1,1 @@
+let r=[EvalError,RangeError,ReferenceError,SyntaxError,TypeError,URIError];function n(r,o=!1){return r instanceof Promise?t(r,o):function(r,n){try{return[r(),null]}catch(r){return e(r,n)}}(r,o)}async function t(r,n){try{return[await r,null]}catch(r){return e(r,n)}}function e(n,t){if(t&&r.some(r=>n instanceof r))throw n;return[void 0,n]}export{n as go};

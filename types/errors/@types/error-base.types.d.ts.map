@@ -1,0 +1,1 @@
+{"version":3,"file":"error-base.types.d.ts","sourceRoot":"","sources":["../../../../src/errors/@types/error-base.types.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,cAAc,CAAC,CAAC,SAAS,MAAM;IAC9C,IAAI,EAAE,CAAC,CAAC;IACR,OAAO,EAAE,MAAM,CAAC;IAChB,KAAK,CAAC,EAAE,OAAO,CAAC;CACjB"}

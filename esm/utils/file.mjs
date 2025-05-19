@@ -1,0 +1,1 @@
+let e=e=>{let t=new URL(e).pathname.split("/");return t.pop(),t.join("/")};export{e as basePath};

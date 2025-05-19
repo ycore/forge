@@ -1,0 +1,1 @@
+import*as r from"./error-base.mjs";var a=r.BaseError;export{a as BaseError};

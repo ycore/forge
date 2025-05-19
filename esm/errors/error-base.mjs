@@ -1,0 +1,1 @@
+class e extends Error{kind;cause;constructor(t,s,r){if("object"==typeof t){let{kind:e,message:s,cause:r}=t;super(s),this.kind=e,this.cause=r}else super(s),this.kind=t,this.cause=r;Object.setPrototypeOf(this,e.prototype)}}export{e as BaseError};

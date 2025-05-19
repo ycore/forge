@@ -1,0 +1,1 @@
+function e(e){let t=e.headers.get("X-Forwarded-Host")??e.headers.get("host")??new URL(e.url).host,r=e.headers.get("X-Forwarded-Proto")??"http";return`${r}://${t}`}export{e as getDomainUrl};

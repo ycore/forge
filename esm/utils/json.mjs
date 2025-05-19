@@ -1,0 +1,1 @@
+let e=(r,...t)=>(t.map(t=>{for(let l in t)if(Object.prototype.hasOwnProperty.call(t,l)){let o=t[l];"object"!=typeof o||Array.isArray(o)||null===o?r[l]=o:(r[l]||(r[l]={}),e(r[l],o))}}),r);export{e as mergeJSON};

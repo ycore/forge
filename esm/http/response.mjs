@@ -1,0 +1,1 @@
+function e(e,n){return new Response(JSON.stringify(e),{...n,headers:{"Content-Type":"application/json",...n?.headers}})}export{e as json};

@@ -9,16 +9,16 @@
   },
   "exports": {
     "./errors": {
-      "import": "./errors/index.mjs",
-      "types": "./errors/index.d.ts"
+      "import": "./esm/errors/index.mjs",
+      "types": "./types/errors/index.d.ts"
     },
     "./http": {
-      "import": "./http/index.mjs",
-      "types": "./http/index.d.ts"
+      "import": "./esm/http/index.mjs",
+      "types": "./types/http/index.d.ts"
     },
     "./utils": {
-      "import": "./utils/index.mjs",
-      "types": "./utils/index.d.ts"
+      "import": "./esm/utils/index.mjs",
+      "types": "./types/utils/index.d.ts"
     }
   },
   "dependencies": {
