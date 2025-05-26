@@ -1,1 +1,1 @@
-import*as o from"./request.mjs";import*as s from"./response.mjs";var r=o.getDomainUrl,e=s.json;export{r as getDomainUrl,e as json};
+import*as r from"./request.mjs";import*as e from"./response.mjs";var t=r.getCurrentHost,o=r.getCurrentProtocol,s=r.getDomainUrl,_=r.getDomainUrls,a=e.json;export{t as getCurrentHost,o as getCurrentProtocol,s as getDomainUrl,_ as getDomainUrls,a as json};
