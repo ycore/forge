@@ -46,11 +46,17 @@ export declare const toHex: (valueBuffer: number[]) => string;
  */
 export declare const base64Encode: (data: Uint8Array | string) => string;
 /**
+ * Decodes a base64url string into a Uint8Array.
+ * @param {Uint8Array | string} data - The base64url encoded data to decode.
+ * @returns {Uint8Array} The decoded Uint8Array.
+ */
+export declare const base64Decode: (data: Uint8Array | string) => Uint8Array<ArrayBufferLike>;
+/**
  * Decodes a base64url string into a decoded string.
  * @param {Uint8Array | string} data - The base64url encoded data to decode.
  * @returns {string} The decoded string.
  */
-export declare const base64Decode: (data: Uint8Array | string) => string;
+export declare const base64DecodeString: (data: Uint8Array | string) => string;
 /**
  * Converts a decimal number to a string representation using a custom base system.
  *
