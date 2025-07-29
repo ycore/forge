@@ -1,0 +1,31 @@
+{
+  "name": "@ycore/forge",
+  "version": "2.2.0",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ycore/forge.git"
+  },
+  "exports": {
+    "./adapters/cloudflare": "./src/adapters/cloudflare/index.ts",
+    "./markdown": "./src/markdown/index.ts",
+    "./markdown/styles/markdown.css": "./src/markdown/styles/markdown.css",
+    "./vite/plugins": "./src/vite/plugins/index.ts",
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "clsx": "catalog:peer",
+    "react": "catalog:peer",
+    "react-dom": "catalog:peer",
+    "react-router": "catalog:peer"
+  },
+  "devDependencies": {
+    "@total-typescript/tsconfig": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "isomorphic-dompurify": "catalog:dev",
+    "marked": "catalog:dev",
+    "shiki": "catalog:dev",
+    "vite": "catalog:dev"
+  }
+}
