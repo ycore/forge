@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: acceptable */
-import MARKDOWN_MANIFEST from 'virtual:md-manifest';
 import { createSpriteIcon } from '@ycore/componentry/images';
 import { LoadingBar, THEME_OPTIONS, ThemeSwitch } from '@ycore/componentry/impetus';
 import type { IconName } from '@ycore/componentry/shadcn-ui';
@@ -7,6 +6,7 @@ import svgSpriteUrl from '@ycore/componentry/shadcn-ui/assets/lucide-sprites.svg
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
+import { getMarkdownManifest } from '../markdown-data';
 import type { MarkdownMeta } from '../markdown-loader';
 import { Markdown } from '../markdown-loader';
 
@@ -34,8 +34,9 @@ export const routesTemplate = {
 };
 
 // Loader that returns the manifest data as-is
-export async function loader(): Promise<EnhancedMarkdownMeta[]> {
-  return MARKDOWN_MANIFEST as EnhancedMarkdownMeta[];
+export async function loader({ request }: { request: Request }): Promise<EnhancedMarkdownMeta[]> {
+  const manifest = await getMarkdownManifest(request);
+  return manifest as EnhancedMarkdownMeta[];
 }
 
 interface ComponentProps {
@@ -108,7 +109,6 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-lg dark:text-white">Documentation</h2>
               <div>
-                <ThemeSwitch theme={THEME_OPTIONS} className="size-3" classTheme="size-3" />
                 <button type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="rounded-md p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                   <SpriteIcon id="ChevronLeft" className="h-5 w-5" />
                 </button>
@@ -117,6 +117,9 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
             <nav className="space-y-1" aria-label="Documentation navigation">
               {docs.length === 0 ? <DocListEmpty /> : <DocList docs={docs} selectedDoc={selectedDoc} onDocSelect={handleDocSelect} />}
             </nav>
+            <div className="fixed right-4 bottom-4 z-10">
+              <ThemeSwitch theme={THEME_OPTIONS} className="size-3" classTheme="size-3" />
+            </div>
           </div>
         </aside>
 
@@ -156,9 +159,9 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
             )}
           </div>
         </main>
-      </div>
-    </div>
-  );
+      </div >
+    </div >
+  )
 }
 
 const DocListEmpty = () => {

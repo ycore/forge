@@ -5,9 +5,9 @@ import { markdownBuilder } from './src/vite/plugins'
 export default defineConfig({
   plugins: [
     markdownBuilder({
-      'contentPath': 'src/markdown/content',
-      'fileExtension': '.md'
-})
+      'source': 'src/markdown/content',
+      'extension': '.md'
+    })
   ],
   build: {
     lib: {

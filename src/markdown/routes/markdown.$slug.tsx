@@ -1,6 +1,5 @@
-import MARKDOWN_CONTENT from 'virtual:md-content';
 import { redirect } from 'react-router';
-
+import { getMarkdownDocument } from '../markdown-data';
 import { routesTemplate } from './markdown';
 
 interface LoaderArgs {
@@ -31,7 +30,7 @@ export async function loader({ params, request }: LoaderArgs) {
   const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
 
   // Check if the document exists
-  const doc = MARKDOWN_CONTENT[sanitizedSlug];
+  const doc = await getMarkdownDocument(sanitizedSlug, request);
   if (!doc) {
     throw new Response('Document not found', { status: 404 });
   }

@@ -1,6 +1,6 @@
 {
   "name": "@ycore/forge",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "type": "module",
   "repository": {
@@ -15,7 +15,7 @@
     },
     "./markdown": {
       "import": "./dist/markdown/index.js",
-      "types": "./dist/markdown/index.d.ts", 
+      "types": "./dist/markdown/index.d.ts",
       "default": "./src/markdown/index.ts"
     },
     "./markdown/styles/markdown.css": "./dist/markdown/styles/markdown.css",
