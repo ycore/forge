@@ -208,7 +208,6 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
       const docsDir = path.join(process.cwd(), source);
       const prev = await loadPreviousManifest();
       const { changed, updatedFiles } = await checkForChanges(docsDir, prev);
-      console.log({ changed }, { updatedFiles });
       if (!changed) return;
       const result = await processChangedFiles(updatedFiles);
       await writeMarkdownFiles(result.manifest, result.content);

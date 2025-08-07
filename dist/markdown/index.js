@@ -1,28 +1,3 @@
-// src/markdown/markdown-loader.tsx
-import { jsx } from "react/jsx-runtime";
-function Markdown({ children, className = "" }) {
-  if (!children || typeof children !== "string") {
-    return /* @__PURE__ */ jsx("div", {
-      className
-    });
-  }
-  return /* @__PURE__ */ jsx("div", {
-    className,
-    dangerouslySetInnerHTML: { __html: children }
-  });
-}
-// src/markdown/routes/markdown.tsx
-import { createSpriteIcon } from "@ycore/componentry/images";
-import { LoadingBar, THEME_OPTIONS, ThemeSwitch } from "@ycore/componentry/impetus";
-
-// url-asset:@ycore/componentry/shadcn-ui/assets/lucide-sprites.svg
-var lucide_sprites_default = "./@ycore/componentry/shadcn-ui/assets/lucide-sprites.svg";
-
-// src/markdown/routes/markdown.tsx
-import clsx from "clsx";
-import { memo, useCallback, useEffect, useState } from "react";
-import { useFetcher, useLocation } from "react-router";
-
 // src/markdown/markdown-data.ts
 var manifestCache = null;
 var contentCache = null;
@@ -77,10 +52,26 @@ async function hasMarkdownDocument(slug, request) {
   const content = await getMarkdownContent(request);
   return slug in content;
 }
-
+// src/markdown/markdown-loader.tsx
+import { jsx } from "react/jsx-runtime";
+function Markdown({ children, className = "" }) {
+  if (!children || typeof children !== "string") {
+    return /* @__PURE__ */ jsx("div", {
+      className
+    });
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className,
+    dangerouslySetInnerHTML: { __html: children }
+  });
+}
 // src/markdown/routes/markdown.tsx
+import { SpriteIcon } from "@ycore/componentry/images";
+import { LoadingBar, THEME_OPTIONS, ThemeSwitch } from "@ycore/componentry/impetus";
+import clsx from "clsx";
+import { memo, useCallback, useEffect, useState } from "react";
+import { useFetcher, useLocation } from "react-router";
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
-var SpriteIcon = createSpriteIcon(lucide_sprites_default);
 var isDocContent = (data) => {
   return typeof data === "object" && data !== null && "content" in data && "frontmatter" in data && "slug" in data;
 };
@@ -92,7 +83,7 @@ async function loader({ request }) {
   const manifest = await getMarkdownManifest(request);
   return manifest;
 }
-function MarkdownPage({ loaderData }) {
+function MarkdownPage({ loaderData, spriteUrl }) {
   const docs = loaderData;
   const location = useLocation();
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -158,6 +149,7 @@ function MarkdownPage({ loaderData }) {
                       onClick: () => setSidebarCollapsed(!sidebarCollapsed),
                       className: "rounded-md p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
                       children: /* @__PURE__ */ jsx2(SpriteIcon, {
+                        url: spriteUrl,
                         id: "ChevronLeft",
                         className: "h-5 w-5"
                       })
@@ -171,13 +163,15 @@ function MarkdownPage({ loaderData }) {
                 children: docs.length === 0 ? /* @__PURE__ */ jsx2(DocListEmpty, {}) : /* @__PURE__ */ jsx2(DocList, {
                   docs,
                   selectedDoc,
-                  onDocSelect: handleDocSelect
+                  onDocSelect: handleDocSelect,
+                  spriteUrl
                 })
               }),
               /* @__PURE__ */ jsx2("div", {
                 className: "fixed right-4 bottom-4 z-10",
                 children: /* @__PURE__ */ jsx2(ThemeSwitch, {
                   theme: THEME_OPTIONS,
+                  spriteUrl,
                   className: "size-3",
                   classTheme: "size-3"
                 })
@@ -190,6 +184,7 @@ function MarkdownPage({ loaderData }) {
           onClick: () => setSidebarCollapsed(false),
           className: `fixed top-4 left-4 z-30 rounded-md border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-opacity duration-300 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-200 ${sidebarCollapsed ? "opacity-100" : "pointer-events-none opacity-0"}`,
           children: /* @__PURE__ */ jsx2(SpriteIcon, {
+            url: spriteUrl,
             id: "EllipsisVertical",
             className: "h-5 w-5"
           })
@@ -206,6 +201,7 @@ function MarkdownPage({ loaderData }) {
                   /* @__PURE__ */ jsx2("div", {
                     className: "mb-4 text-gray-400 dark:text-gray-500",
                     children: /* @__PURE__ */ jsx2(SpriteIcon, {
+                      url: spriteUrl,
                       id: "CircleAlert",
                       className: "h-8 w-8"
                     })
@@ -220,7 +216,9 @@ function MarkdownPage({ loaderData }) {
                   })
                 ]
               })
-            }) : fetcher.state === "loading" ? /* @__PURE__ */ jsx2(LoadingBar, {}) : error ? /* @__PURE__ */ jsx2(DocumentNotFound, {}) : currentDoc ? /* @__PURE__ */ jsxs("article", {
+            }) : fetcher.state === "loading" ? /* @__PURE__ */ jsx2(LoadingBar, {}) : error ? /* @__PURE__ */ jsx2(DocumentNotFound, {
+              spriteUrl
+            }) : currentDoc ? /* @__PURE__ */ jsxs("article", {
               className: "markdown-content px-8 py-12",
               children: [
                 /* @__PURE__ */ jsx2(DocumentHeader, {
@@ -231,7 +229,9 @@ function MarkdownPage({ loaderData }) {
                   children: currentDoc.content
                 })
               ]
-            }) : /* @__PURE__ */ jsx2(DocumentNotFound, {})
+            }) : /* @__PURE__ */ jsx2(DocumentNotFound, {
+              spriteUrl
+            })
           })
         })
       ]
@@ -244,7 +244,7 @@ var DocListEmpty = () => {
     children: "No documentation found."
   });
 };
-var DocumentNotFound = memo(() => /* @__PURE__ */ jsx2("div", {
+var DocumentNotFound = memo(({ spriteUrl }) => /* @__PURE__ */ jsx2("div", {
   className: "flex h-96 items-center justify-center",
   children: /* @__PURE__ */ jsxs("div", {
     className: "text-center",
@@ -252,6 +252,7 @@ var DocumentNotFound = memo(() => /* @__PURE__ */ jsx2("div", {
       /* @__PURE__ */ jsx2("div", {
         className: "mb-4 text-red-400 dark:text-red-500",
         children: /* @__PURE__ */ jsx2(SpriteIcon, {
+          url: spriteUrl,
           id: "CircleAlert",
           className: "mx-auto h-8 w-8"
         })
@@ -294,7 +295,7 @@ var DocumentHeader = memo(({ frontmatter }) => /* @__PURE__ */ jsxs("header", {
     })
   ]
 }));
-var DocList = memo(({ docs, selectedDoc, onDocSelect }) => {
+var DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }) => {
   const groupedDocs = useCallback(() => {
     const groups2 = {};
     for (const doc of docs) {
@@ -328,6 +329,7 @@ var DocList = memo(({ docs, selectedDoc, onDocSelect }) => {
                 className: "flex w-full cursor-pointer items-center px-3 py-2 text-left text-gray-600 text-sm transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50",
                 children: [
                   /* @__PURE__ */ jsx2(SpriteIcon, {
+                    url: spriteUrl,
                     id: "ChevronRight",
                     className: "mr-2 h-3 w-3 transition-transform duration-200 peer-checked:rotate-90"
                   }),
@@ -416,4 +418,4 @@ export {
   Markdown
 };
 
-//# debugId=9E37CE23228A64A364756E2164756E21
+//# debugId=257EE1A21E7CF98064756E2164756E21

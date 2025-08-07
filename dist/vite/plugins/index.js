@@ -157,7 +157,6 @@ ${markdown}`;
       const docsDir = path.join(process.cwd(), source);
       const prev = await loadPreviousManifest();
       const { changed, updatedFiles } = await checkForChanges(docsDir, prev);
-      console.log({ changed }, { updatedFiles });
       if (!changed)
         return;
       const result = await processChangedFiles(updatedFiles);
@@ -453,4 +452,4 @@ export {
   markdownBuilder
 };
 
-//# debugId=6FE5FB752DC6452D64756E2164756E21
+//# debugId=849C0875BFBBA30064756E2164756E21
