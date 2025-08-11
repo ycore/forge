@@ -2,18 +2,18 @@ import { unstable_createContext, type unstable_RouterContextProvider } from 'rea
 
 export const CloudflareContext = unstable_createContext<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>();
 
-export function getBindings(context: unstable_RouterContextProvider) {
+export function getBindings(context: Readonly<unstable_RouterContextProvider>) {
   return context.get(CloudflareContext).env;
 }
 
-export function getExecutionContext(context: unstable_RouterContextProvider): ExecutionContext {
+export function getExecutionContext(context: Readonly<unstable_RouterContextProvider>): ExecutionContext {
   return context.get(CloudflareContext).ctx;
 }
 
-export function getRequestProperties(context: unstable_RouterContextProvider): RequestInitCfProperties | undefined {
+export function getRequestProperties(context: Readonly<unstable_RouterContextProvider>): RequestInitCfProperties | undefined {
   return context.get(CloudflareContext).cf;
 }
 
-export function waitUntil<T>(context: unstable_RouterContextProvider, promise: Promise<T>) {
+export function waitUntil<T>(context: Readonly<unstable_RouterContextProvider>, promise: Promise<T>) {
   return getExecutionContext(context).waitUntil(promise);
 }

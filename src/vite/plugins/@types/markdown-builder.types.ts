@@ -13,6 +13,9 @@ export interface MarkdownMeta {
   description?: string;
   date?: string;
   folder?: string;
+  // Build metadata for caching
+  _mtime?: number;
+  _size?: number;
   [key: string]: any;
 }
 
@@ -26,22 +29,6 @@ export interface ShikiConfig {
   defaultTheme?: string;
 }
 
-export interface MarkdownBuilderOptions {
-  /** Path to the markdown files directory (relative to cwd) */
-  contentPath: string;
-  /** File extension to look for (e.g., '.md', '.mdx') */
-  fileExtension: string;
-  /** Virtual module ID for the manifest */
-  manifestId?: string;
-  /** Virtual module ID for the content */
-  contentId?: string;
-  /** Whether to purify HTML content (default: true) */
-  purifyHtml?: boolean;
-  /** Syntax highlighter to use (default: Shiki, null = no highlighting) */
-  syntaxHighlighter?: SyntaxHighlighter | null;
-  /** Configuration for the default Shiki highlighter */
-  shikiConfig?: ShikiConfig;
-}
 
 export interface ProcessingResult {
   manifest: MarkdownMeta[];

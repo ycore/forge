@@ -1,16 +1,14 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: acceptable */
-import MARKDOWN_MANIFEST from 'virtual:md-manifest';
-import { createSpriteIcon } from '@ycore/componentry/images';
+import { SpriteIcon } from '@ycore/componentry/images';
 import { LoadingBar, THEME_OPTIONS, ThemeSwitch } from '@ycore/componentry/impetus';
 import type { IconName } from '@ycore/componentry/shadcn-ui';
-import svgSpriteUrl from '@ycore/componentry/shadcn-ui/assets/lucide-sprites.svg?url';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
+
+import { getMarkdownManifest } from '../markdown-data';
 import type { MarkdownMeta } from '../markdown-loader';
 import { Markdown } from '../markdown-loader';
-
-const SpriteIcon = createSpriteIcon<IconName>(svgSpriteUrl);
 
 // Type definitions
 interface DocContent {
@@ -34,15 +32,17 @@ export const routesTemplate = {
 };
 
 // Loader that returns the manifest data as-is
-export async function loader(): Promise<EnhancedMarkdownMeta[]> {
-  return MARKDOWN_MANIFEST as EnhancedMarkdownMeta[];
+export async function loader({ request }: { request: Request }): Promise<EnhancedMarkdownMeta[]> {
+  const manifest = await getMarkdownManifest(request);
+  return manifest as EnhancedMarkdownMeta[];
 }
 
 interface ComponentProps {
   loaderData: EnhancedMarkdownMeta[];
+  spriteUrl: string;
 }
 
-export default function MarkdownPage({ loaderData }: ComponentProps) {
+export default function MarkdownPage({ loaderData, spriteUrl }: ComponentProps) {
   const docs = loaderData;
   const location = useLocation();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
@@ -108,15 +108,17 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-lg dark:text-white">Documentation</h2>
               <div>
-                <ThemeSwitch theme={THEME_OPTIONS} className="size-3" classTheme="size-3" />
                 <button type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="rounded-md p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                  <SpriteIcon id="ChevronLeft" className="h-5 w-5" />
+                  <SpriteIcon<IconName> url={spriteUrl} id="ChevronLeft" className="h-5 w-5" />
                 </button>
               </div>
             </div>
             <nav className="space-y-1" aria-label="Documentation navigation">
-              {docs.length === 0 ? <DocListEmpty /> : <DocList docs={docs} selectedDoc={selectedDoc} onDocSelect={handleDocSelect} />}
+              {docs.length === 0 ? <DocListEmpty /> : <DocList docs={docs} selectedDoc={selectedDoc} onDocSelect={handleDocSelect} spriteUrl={spriteUrl} />}
             </nav>
+            <div className="fixed right-4 bottom-4 z-10">
+              <ThemeSwitch theme={THEME_OPTIONS} spriteUrl={spriteUrl} className="size-3" classTheme="size-3" />
+            </div>
           </div>
         </aside>
 
@@ -126,7 +128,7 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
           onClick={() => setSidebarCollapsed(false)}
           className={`fixed top-4 left-4 z-30 rounded-md border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-opacity duration-300 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-200 ${sidebarCollapsed ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         >
-          <SpriteIcon id="EllipsisVertical" className="h-5 w-5" />
+          <SpriteIcon<IconName> url={spriteUrl} id="EllipsisVertical" className="h-5 w-5" />
         </button>
 
         {/* Main content */}
@@ -136,7 +138,7 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
               <div className="flex h-96 items-center justify-center">
                 <div className="text-center">
                   <div className="mb-4 text-gray-400 dark:text-gray-500">
-                    <SpriteIcon id="CircleAlert" className="h-8 w-8" />
+                    <SpriteIcon<IconName> url={spriteUrl} id="CircleAlert" className="h-8 w-8" />
                   </div>
                   <h3 className="mb-2 font-medium text-gray-900 text-lg dark:text-white">Select a document</h3>
                   <p className="text-gray-500 dark:text-gray-400">Choose a document from the sidebar to view its content.</p>
@@ -145,14 +147,14 @@ export default function MarkdownPage({ loaderData }: ComponentProps) {
             ) : fetcher.state === 'loading' ? (
               <LoadingBar />
             ) : error ? (
-              <DocumentNotFound />
+              <DocumentNotFound spriteUrl={spriteUrl} />
             ) : currentDoc ? (
               <article className="markdown-content px-8 py-12">
                 <DocumentHeader frontmatter={currentDoc.frontmatter} />
                 <Markdown className="max-w-none">{currentDoc.content}</Markdown>
               </article>
             ) : (
-              <DocumentNotFound />
+              <DocumentNotFound spriteUrl={spriteUrl} />
             )}
           </div>
         </main>
@@ -168,11 +170,11 @@ const DocListEmpty = () => {
 // Memoized components
 // const LoadingBar = memo(() => <div className="loading-bar" />);
 
-const DocumentNotFound = memo(() => (
+const DocumentNotFound = memo(({ spriteUrl }: { spriteUrl: string }) => (
   <div className="flex h-96 items-center justify-center">
     <div className="text-center">
       <div className="mb-4 text-red-400 dark:text-red-500">
-        <SpriteIcon id="CircleAlert" className="mx-auto h-8 w-8" />
+        <SpriteIcon<IconName> url={spriteUrl} id="CircleAlert" className="mx-auto h-8 w-8" />
       </div>
       <h3 className="mb-2 font-medium text-gray-900 text-lg dark:text-white">Document not found</h3>
       <p className="text-gray-500 dark:text-gray-400">The selected document could not be loaded.</p>
@@ -197,7 +199,7 @@ const DocumentHeader = memo(({ frontmatter }: { frontmatter: Record<string, any>
   </header>
 ));
 
-const DocList = memo(({ docs, selectedDoc, onDocSelect }: { docs: EnhancedMarkdownMeta[]; selectedDoc: string | null; onDocSelect: (slug: string) => void }) => {
+const DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }: { docs: EnhancedMarkdownMeta[]; selectedDoc: string | null; onDocSelect: (slug: string) => void, spriteUrl: string }) => {
   // Group documents by folder and track which is first in each folder
   const groupedDocs = useCallback(() => {
     const groups: { [folder: string]: EnhancedMarkdownMeta[] } = {};
@@ -227,7 +229,7 @@ const DocList = memo(({ docs, selectedDoc, onDocSelect }: { docs: EnhancedMarkdo
               <div className="relative">
                 <input type="checkbox" id={folderId} className="peer hidden" defaultChecked={true} />
                 <label htmlFor={folderId} className="flex w-full cursor-pointer items-center px-3 py-2 text-left text-gray-600 text-sm transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50">
-                  <SpriteIcon id="ChevronRight" className="mr-2 h-3 w-3 transition-transform duration-200 peer-checked:rotate-90" />
+                  <SpriteIcon<IconName> url={spriteUrl} id="ChevronRight" className="mr-2 h-3 w-3 transition-transform duration-200 peer-checked:rotate-90" />
                   <span className="font-medium capitalize">{folder}</span>
                 </label>
 

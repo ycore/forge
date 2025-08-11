@@ -6,10 +6,30 @@ import DOMPurify from 'isomorphic-dompurify';
 import { marked } from 'marked';
 import { createHighlighter } from 'shiki';
 import type { Plugin } from 'vite';
-import type { Frontmatter, MarkdownBuilderOptions, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from './@types/markdown-builder.types';
+import type { Frontmatter, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from './@types/markdown-builder.types';
+
+interface MarkdownBuilderOptions {
+  source: string;
+  extension?: string;
+  target?: string;
+  prefix?: string;
+  updateDate?: boolean;
+  purifyHtml?: boolean;
+  syntaxHighlighter?: SyntaxHighlighter | null;
+  shikiConfig?: ShikiConfig;
+}
+
+interface FileMetadata {
+  mtime: number;
+  size: number;
+}
 
 const readFile = promisify(fs.readFile);
 const readdir = promisify(fs.readdir);
+const writeFile = promisify(fs.writeFile);
+const mkdir = promisify(fs.mkdir);
+const stat = promisify(fs.stat);
+const utimes = promisify(fs.utimes);
 
 // DOMPurify configuration for markdown content
 const DOMPURIFY_CONFIG = {
@@ -26,37 +46,56 @@ const HIGHLIGHTER = {
   THEMES: ['night-owl'],
 };
 
+const CONCURRENCY_LIMIT = 10;
+
 export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
-  const { contentPath, fileExtension, manifestId = 'virtual:md-manifest', contentId = 'virtual:md-content', purifyHtml = true, syntaxHighlighter, shikiConfig } = options;
-
-  const virtualManifestId = manifestId;
-  const resolvedManifestId = `\0${virtualManifestId}`;
-  const virtualDocsId = contentId;
-  const resolvedDocsId = `\0${virtualDocsId}`;
-
-  let docsData: { manifest: MarkdownMeta[]; content: Record<string, any> } = {
-    manifest: [],
-    content: {},
-  };
+  const { source, extension = '.md', target = 'public', prefix = 'markdown', updateDate = true, purifyHtml = true, syntaxHighlighter, shikiConfig } = options;
 
   let highlighter: SyntaxHighlighter | null = null;
   let isInitialized = false;
 
+  async function updateFrontmatterDate(filePath: string, content: string, fileMtime: number): Promise<string> {
+    if (!updateDate) return content;
+
+    const { data: frontmatter, content: markdown } = parseFrontmatter(content);
+    const fileDate = new Date(fileMtime).toISOString().split('T')[0];
+
+    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return content;
+    if (frontmatter.date === fileDate) return content;
+
+    const updatedFrontmatter = { ...frontmatter, date: fileDate };
+    const frontmatterStr = Object.entries(updatedFrontmatter)
+      .map(([key, value]) => `${key}: ${typeof value === 'string' ? `"${value}"` : value}`)
+      .join('\n');
+
+    const updatedContent = `---\n${frontmatterStr}\n---\n${markdown}`;
+
+    try {
+      await writeFile(filePath, updatedContent);
+
+      // Restore original timestamp to preserve manual edit time
+      const originalDate = new Date(fileMtime);
+      await utimes(filePath, originalDate, originalDate);
+
+      console.info(`📅 Updated frontmatter date in ${filePath} to match file`);
+      return updatedContent;
+    } catch (error) {
+      console.warn(`⚠️ Failed to update date in ${filePath}:`, error);
+      return content;
+    }
+  }
+
   // Initialize highlighter and marked configuration
-  const initializeHighlighter = async (): Promise<void> => {
+  async function initializeHighlighter(): Promise<void> {
     if (isInitialized) return;
 
     if (syntaxHighlighter === null) {
-      // Explicitly disabled
       highlighter = null;
     } else if (syntaxHighlighter) {
-      // Custom highlighter provided
       highlighter = syntaxHighlighter;
     } else {
-      // Default to Shiki highlighter
       try {
         highlighter = await createShikiHighlighter(shikiConfig);
-        console.info('✓ Shiki syntax highlighter initialized');
       } catch (error) {
         console.warn('⚠️ Failed to initialize Shiki highlighter:', error);
         highlighter = null;
@@ -64,120 +103,123 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
     }
 
     isInitialized = true;
-  };
+  }
 
-  async function generateData(): Promise<ProcessingResult> {
-    await initializeHighlighter();
+  async function collectMarkdownFilesWithMetadata(dir: string): Promise<Map<string, { path: string; metadata: FileMetadata }>> {
+    const result = new Map();
 
-    const docsDir = path.join(process.cwd(), contentPath);
-
-    if (!fs.existsSync(docsDir)) {
-      console.warn(`⚠️ Markdown directory not found: ${docsDir}, creating empty manifest`);
-      return { manifest: [], content: {}, processedCount: 0, errorCount: 0 };
+    async function walk(current: string) {
+      const entries = await readdir(current, { withFileTypes: true });
+      await Promise.all(
+        entries.map(async entry => {
+          const full = path.join(current, entry.name);
+          if (entry.isDirectory()) return walk(full);
+          if (!entry.name.endsWith(extension)) return;
+          const stats = await stat(full);
+          const rel = path.relative(dir, full);
+          result.set(rel, { path: full, metadata: { mtime: stats.mtime.getTime(), size: stats.size } });
+        })
+      );
     }
 
-    console.info(`➡️  Preparing markdown processing for ${contentPath}`);
+    await walk(dir);
+    return result;
+  }
+
+  function isFileChanged(prev: MarkdownMeta | undefined, current: FileMetadata): boolean {
+    // console.log('isFileChanged', prev._mtime, current.mtime, prev._size, current.size);
+    return !prev || prev._mtime !== current.mtime || prev._size !== current.size;
+  }
+
+  async function checkForChanges(dir: string, previous: MarkdownMeta[]) {
+    const previousMap = new Map(previous.map(entry => [entry.path, entry]));
+    const currentFiles = await collectMarkdownFilesWithMetadata(dir);
+
+    for (const [relPath, { metadata }] of currentFiles) {
+      if (isFileChanged(previousMap.get(relPath), metadata)) {
+        return { changed: true, updatedFiles: currentFiles };
+      }
+    }
+
+    if (previous.length !== currentFiles.size) {
+      return { changed: true, updatedFiles: currentFiles };
+    }
+
+    return { changed: false, updatedFiles: currentFiles };
+  }
+
+  async function processChangedFiles(files: Map<string, { path: string; metadata: FileMetadata }>): Promise<ProcessingResult> {
+    await initializeHighlighter();
 
     const manifest: MarkdownMeta[] = [];
     const content: Record<string, any> = {};
-    let processedCount = 0;
     let errorCount = 0;
 
-    async function scanDirectory(dir: string, relativePath = ''): Promise<void> {
-      const entries = await readdir(dir, { withFileTypes: true });
-      const fileProcessingPromises: Promise<void>[] = [];
+    const entries = [...files.entries()];
 
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        const relativeEntryPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
+    await execConcurrently(entries, CONCURRENCY_LIMIT, async ([relPath, { path: filePath, metadata }]) => {
+      try {
+        const raw = await readFile(filePath, 'utf8');
+        const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
+        const { data: frontmatter } = parseFrontmatter(updated);
+        const { content: html, error } = await processMarkdownFile(filePath, purifyHtml, highlighter);
 
-        if (entry.isDirectory()) {
-          await scanDirectory(fullPath, relativeEntryPath);
-        } else if (entry.isFile() && entry.name.endsWith(fileExtension)) {
-          const fileName = entry.name.replace(fileExtension, '');
-          const slug = relativePath ? `${relativePath}/${fileName}` : fileName;
+        if (error) throw new Error(error);
 
-          const processingPromise = (async () => {
-            try {
-              const source = await readFile(fullPath, 'utf8');
-              const { data: frontmatter } = parseFrontmatter(source);
-              const { content: processedContent, error } = await processMarkdownFile(fullPath, purifyHtml, highlighter);
+        const slug = relPath.replace(new RegExp(`${extension}$`), '');
+        const folder = path.dirname(relPath) === '.' ? undefined : path.dirname(relPath);
 
-              if (error) {
-                console.error(`❌ Error processing ${slug}: ${error}`);
-                errorCount++;
-              } else {
-                processedCount++;
-              }
-
-              const frontmatterObj = frontmatter && typeof frontmatter === 'object' ? frontmatter : {};
-              manifest.push({ slug, path: relativeEntryPath, folder: relativePath || undefined, ...frontmatterObj });
-
-              content[slug] = { frontmatter, content: processedContent };
-            } catch (error) {
-              console.error(`❌ Error processing ${slug}:`, error instanceof Error ? error.message : String(error));
-              errorCount++;
-            }
-          })();
-
-          fileProcessingPromises.push(processingPromise);
-        }
+        manifest.push({ slug, path: relPath, folder, _mtime: metadata.mtime, _size: metadata.size, ...(frontmatter as Frontmatter) });
+        content[slug] = { frontmatter, content: html };
+      } catch (e) {
+        errorCount++;
+        console.error(`❌ Error processing ${filePath}:`, e);
       }
+    });
 
-      // Wait for all file processing in this directory to complete
-      await Promise.all(fileProcessingPromises);
+    return { manifest: sortManifest(manifest), content, processedCount: manifest.length, errorCount };
+  }
+
+  async function loadPreviousManifest(): Promise<MarkdownMeta[]> {
+    try {
+      const file = path.join(process.cwd(), target, `${prefix}-manifest.json`);
+      if (!fs.existsSync(file)) return [];
+      return JSON.parse(await readFile(file, 'utf8'));
+    } catch {
+      return [];
     }
+  }
 
-    await scanDirectory(docsDir);
-    const sortedManifest = sortManifest(manifest);
-
-    if (processedCount > 0) {
-      console.info(`✅ Processed ${processedCount} markdown files.`);
+  // Function to write JSON files
+  async function writeMarkdownFiles(manifest: MarkdownMeta[], content: Record<string, any>) {
+    try {
+      const dir = path.join(process.cwd(), target);
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, `${prefix}-manifest.json`), JSON.stringify(manifest, null, 2));
+      await writeFile(path.join(dir, `${prefix}-content.json`), JSON.stringify(content, null, 2));
+    } catch (e) {
+      console.error('❌ Failed to write markdown JSON files:', e);
     }
-    if (errorCount > 0) {
-      console.error(`❌ ${errorCount} files had processing errors.`);
-    }
-
-    return { manifest: sortedManifest, content, processedCount, errorCount };
   }
 
   return {
     name: 'markdown-builder',
     async buildStart() {
-      const result = await generateData();
-      docsData = { manifest: result.manifest, content: result.content };
-    },
-    resolveId(id) {
-      if (id === virtualManifestId) {
-        return resolvedManifestId;
-      }
-      if (id === virtualDocsId) {
-        return resolvedDocsId;
-      }
-    },
-    load(id) {
-      if (id === resolvedManifestId) {
-        return `export const DOCS_MANIFEST = ${JSON.stringify(docsData.manifest)};\nexport default DOCS_MANIFEST;`;
-      }
-      if (id === resolvedDocsId) {
-        return `export const DOCS_CONTENT = ${JSON.stringify(docsData.content)};\nexport default DOCS_CONTENT;`;
-      }
+      const docsDir = path.join(process.cwd(), source);
+      const prev = await loadPreviousManifest();
+      const { changed, updatedFiles } = await checkForChanges(docsDir, prev);
+      if (!changed) return;
+      const result = await processChangedFiles(updatedFiles);
+      await writeMarkdownFiles(result.manifest, result.content);
+      console.info(`📄 Processing ${updatedFiles.size} updated markdown files from: ${source}`);
     },
     async handleHotUpdate({ file, server }) {
-      if (file.includes(contentPath) && file.endsWith(fileExtension)) {
-        const result = await generateData();
-        docsData = { manifest: result.manifest, content: result.content };
-
-        // Invalidate modules
-        const manifestModule = server.moduleGraph.getModuleById(resolvedManifestId);
-        if (manifestModule) {
-          server.reloadModule(manifestModule);
-        }
-
-        const docsModule = server.moduleGraph.getModuleById(resolvedDocsId);
-        if (docsModule) {
-          server.reloadModule(docsModule);
-        }
+      if (file.includes(source) && file.endsWith(extension)) {
+        const docsDir = path.join(process.cwd(), source);
+        const files = await collectMarkdownFilesWithMetadata(docsDir);
+        const result = await processChangedFiles(files);
+        await writeMarkdownFiles(result.manifest, result.content);
+        server.ws.send({ type: 'full-reload' });
       }
     },
   };
@@ -208,7 +250,7 @@ function parseFrontmatter(content: string) {
 
       // Try to parse as date
       if (key === 'date' && cleanValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        frontmatter[key] = new Date(cleanValue).toISOString();
+        frontmatter[key] = new Date(cleanValue).toISOString().split('T')[0];
       } else {
         frontmatter[key] = cleanValue;
       }
@@ -314,4 +356,27 @@ async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighl
   }
 
   return processedContent;
+}
+
+async function execConcurrently<T>(items: T[], limit: number, handler: (item: T) => Promise<void>): Promise<void> {
+  const executing: Promise<void>[] = [];
+
+  for (const item of items) {
+    const p = handler(item);
+    executing.push(p);
+
+    if (executing.length >= limit) {
+      await Promise.race(executing).catch(() => {});
+      for (let i = executing.length - 1; i >= 0; i--) {
+        try {
+          await executing[i];
+          executing.splice(i, 1);
+        } catch {
+          executing.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  await Promise.allSettled(executing);
 }
