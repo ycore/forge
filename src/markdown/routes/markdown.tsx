@@ -1,25 +1,14 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: acceptable */
 import { SpriteIcon } from '@ycore/componentry/images';
-import { LoadingBar, THEME_OPTIONS, ThemeSwitch } from '@ycore/componentry/impetus';
-import type { IconName } from '@ycore/componentry/shadcn-ui';
+import type { Themes } from '@ycore/componentry/impetus';
+import { LoadingBar, ThemeSwitch } from '@ycore/componentry/impetus';
+import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-
+import type { ComponentProps, DocContent, EnhancedMarkdownMeta } from '../../@types/markdown.types';
 import { getMarkdownManifest } from '../markdown-data';
-import type { MarkdownMeta } from '../markdown-loader';
 import { Markdown } from '../markdown-loader';
-
-// Type definitions
-interface DocContent {
-  content: string;
-  frontmatter: Record<string, any>;
-  slug: string;
-}
-
-interface EnhancedMarkdownMeta extends MarkdownMeta {
-  formattedDate?: string;
-}
 
 // Type guard
 const isDocContent = (data: unknown): data is DocContent => {
@@ -37,18 +26,16 @@ export async function loader({ request }: { request: Request }): Promise<Enhance
   return manifest as EnhancedMarkdownMeta[];
 }
 
-interface ComponentProps {
-  loaderData: EnhancedMarkdownMeta[];
-  spriteUrl: string;
-}
-
-export default function MarkdownPage({ loaderData, spriteUrl }: ComponentProps) {
+export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: ComponentProps) {
   const docs = loaderData;
   const location = useLocation();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const fetcher = useFetcher();
+
+  useEffect(() => setMounted(true), []);
 
   const handleDocSelect = useCallback(
     (slug: string) => {
@@ -116,8 +103,27 @@ export default function MarkdownPage({ loaderData, spriteUrl }: ComponentProps) 
             <nav className="space-y-1" aria-label="Documentation navigation">
               {docs.length === 0 ? <DocListEmpty /> : <DocList docs={docs} selectedDoc={selectedDoc} onDocSelect={handleDocSelect} spriteUrl={spriteUrl} />}
             </nav>
-            <div className="fixed right-4 bottom-4 z-10">
-              <ThemeSwitch theme={THEME_OPTIONS} spriteUrl={spriteUrl} className="size-3" classTheme="size-3" />
+            <div className="fixed right-4 bottom-4 z-10 flex items-center justify-between gap-x-4">
+              <Link href="/">
+                <SpriteIcon<IconName> url={spriteUrl} id="House" className="size-5 text-accent-foreground" viewBox="0 0 24 24" />
+              </Link>
+              {!mounted ? (
+                <div className="size-5" />
+              ) : (
+                <ThemeSwitch spriteUrl={spriteUrl}>
+                  {themeContext
+                    ? ({ theme }: { theme: Themes }) => (
+                      <button type="button" className="size-5 hover:animate-rotate" aria-label="theme switch"
+                        onClick={() => {
+                          themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
+                        }}
+                      >
+                        {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon url={spriteUrl} id="Moon" className="size-5" /> : <SpriteIcon url={spriteUrl} id="Sun" className="size-5" />}
+                      </button>
+                    )
+                    : undefined}
+                </ThemeSwitch>
+              )}
             </div>
           </div>
         </aside>
@@ -199,7 +205,7 @@ const DocumentHeader = memo(({ frontmatter }: { frontmatter: Record<string, any>
   </header>
 ));
 
-const DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }: { docs: EnhancedMarkdownMeta[]; selectedDoc: string | null; onDocSelect: (slug: string) => void, spriteUrl: string }) => {
+const DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }: { docs: EnhancedMarkdownMeta[]; selectedDoc: string | null; onDocSelect: (slug: string) => void; spriteUrl: string }) => {
   // Group documents by folder and track which is first in each folder
   const groupedDocs = useCallback(() => {
     const groups: { [folder: string]: EnhancedMarkdownMeta[] } = {};
