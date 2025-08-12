@@ -76,35 +76,61 @@ var require_shim = __commonJS((exports, module) => {
   } else {}
 });
 
+// src/vite/plugins/@types/markdown-builder.types.ts
+var ASSET_PREFIX = {
+  build: "/assets/docs",
+  fetch: "/assets/docs"
+};
+
 // src/markdown/markdown-data.ts
 var manifestCache = null;
+var globalManifestCache = null;
 var contentCache = null;
+var folderContentCache = new Map;
+function getAssetUrl(filename, request) {
+  const fetchPrefix = ASSET_PREFIX.fetch.endsWith("/") ? ASSET_PREFIX.fetch.slice(0, -1) : ASSET_PREFIX.fetch;
+  const url = `${fetchPrefix}/${filename}`;
+  return request ? new URL(url, request.url).href : url;
+}
+async function getGlobalManifest(request) {
+  if (globalManifestCache) {
+    return globalManifestCache;
+  }
+  try {
+    const manifestUrl = getAssetUrl("markdown-manifest.json", request);
+    const response = await fetch(manifestUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
+      return { documents: [], _buildMode: "single" };
+    }
+    const globalManifest = await response.json();
+    globalManifestCache = globalManifest;
+    return globalManifest;
+  } catch (error) {
+    console.warn("Failed to load global manifest:", error);
+    return { documents: [], _buildMode: "single" };
+  }
+}
 async function getMarkdownManifest(request) {
   if (manifestCache) {
     return manifestCache;
   }
-  try {
-    const manifestUrl = request ? new URL("/markdown-manifest.json", request.url).href : "/markdown-manifest.json";
-    const response = await fetch(manifestUrl);
-    if (!response.ok) {
-      console.warn(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
-      return [];
-    }
-    const manifest = await response.json();
-    const cleanManifest = manifest.map(({ _mtime, _size, ...item }) => item);
-    manifestCache = cleanManifest;
-    return cleanManifest;
-  } catch (error) {
-    console.warn("Failed to load markdown manifest:", error);
-    return [];
-  }
+  const globalManifest = await getGlobalManifest(request);
+  const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
+  manifestCache = cleanManifest;
+  return cleanManifest;
 }
 async function getMarkdownContent(request) {
+  const globalManifest = await getGlobalManifest(request);
+  if (globalManifest._buildMode === "chunked") {
+    console.warn("getMarkdownContent() called in folder chunk mode. Use getMarkdownDocument() or loadFolderContent() instead.");
+    return {};
+  }
   if (contentCache) {
     return contentCache;
   }
   try {
-    const contentUrl = request ? new URL("/markdown-content.json", request.url).href : "/markdown-content.json";
+    const contentUrl = getAssetUrl("markdown-content.json", request);
     const response = await fetch(contentUrl);
     if (!response.ok) {
       console.warn(`Failed to fetch content: ${response.status} ${response.statusText}`);
@@ -118,15 +144,52 @@ async function getMarkdownContent(request) {
     return {};
   }
 }
+async function loadFolderContent(folder, request) {
+  if (folderContentCache.has(folder)) {
+    return folderContentCache.get(folder);
+  }
+  try {
+    const folderKey = folder.replace(/[/\\]/g, "-");
+    const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
+    const response = await fetch(contentUrl);
+    if (!response.ok) {
+      console.warn(`Failed to fetch folder content for ${folder}: ${response.status} ${response.statusText}`);
+      return {};
+    }
+    const content = await response.json();
+    folderContentCache.set(folder, content);
+    return content;
+  } catch (error) {
+    console.warn(`Failed to load folder content for ${folder}:`, error);
+    return {};
+  }
+}
 async function getMarkdownDocument(slug, request) {
+  const globalManifest = await getGlobalManifest(request);
+  if (globalManifest._buildMode === "chunked") {
+    const manifest = await getMarkdownManifest(request);
+    const docMeta = manifest.find((doc) => doc.slug === slug);
+    if (!docMeta || !docMeta.folder) {
+      return null;
+    }
+    const folderContent = await loadFolderContent(docMeta.folder, request);
+    return folderContent[slug] || null;
+  }
   const content = await getMarkdownContent(request);
   return content[slug] || null;
 }
 function clearMarkdownCache() {
   manifestCache = null;
+  globalManifestCache = null;
   contentCache = null;
+  folderContentCache.clear();
 }
 async function hasMarkdownDocument(slug, request) {
+  const globalManifest = await getGlobalManifest(request);
+  if (globalManifest._buildMode === "chunked") {
+    const manifest = await getMarkdownManifest(request);
+    return manifest.some((doc) => doc.slug === slug);
+  }
   const content = await getMarkdownContent(request);
   return slug in content;
 }
@@ -12349,6 +12412,7 @@ import { Link as RouterLink2 } from "react-router";
 import { jsx as jsx422 } from "react/jsx-runtime";
 import clsx38 from "clsx";
 import { jsx as jsx432 } from "react/jsx-runtime";
+import * as React72 from "react";
 function SpriteIcon3({ url, id, ...props }) {
   return /* @__PURE__ */ jsx43("svg", {
     ...props,
@@ -14815,7 +14879,7 @@ var Form2 = Object.assign(Form, {
 
 // src/markdown/routes/markdown.tsx
 import clsx39 from "clsx";
-import { memo as memo4, useCallback as useCallback22, useEffect as useEffect36, useState as useState31 } from "react";
+import { memo as memo4, useCallback as useCallback22, useEffect as useEffect37, useState as useState32 } from "react";
 import { useFetcher, useLocation as useLocation2 } from "react-router";
 import { jsx as jsx45, jsxs as jsxs17 } from "react/jsx-runtime";
 var isDocContent = (data) => {
@@ -14832,12 +14896,12 @@ async function loader({ request }) {
 function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
   const docs = loaderData;
   const location = useLocation2();
-  const [selectedDoc, setSelectedDoc] = useState31(null);
-  const [error, setError] = useState31(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState31(false);
-  const [mounted, setMounted] = useState31(false);
+  const [selectedDoc, setSelectedDoc] = useState32(null);
+  const [error, setError] = useState32(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState32(false);
+  const [mounted, setMounted] = useState32(false);
   const fetcher = useFetcher();
-  useEffect36(() => setMounted(true), []);
+  useEffect37(() => setMounted(true), []);
   const handleDocSelect = useCallback22((slug) => {
     if (selectedDoc === slug)
       return;
@@ -14846,14 +14910,14 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
     fetcher.load(routesTemplate.docsApi(slug));
     window.history.replaceState(null, "", routesTemplate.docs(slug));
   }, [fetcher.load, selectedDoc]);
-  useEffect36(() => {
+  useEffect37(() => {
     const hash = location.hash.slice(1);
     if (hash && docs.find((doc) => doc.slug === hash) && !selectedDoc) {
       setSelectedDoc(hash);
       fetcher.load(routesTemplate.docsApi(hash));
     }
   }, [docs, fetcher.load, selectedDoc, location.hash.slice]);
-  useEffect36(() => {
+  useEffect37(() => {
     const handlePopState = () => {
       const hash = window.location.hash.slice(1);
       if (hash && docs.find((doc) => doc.slug === hash)) {
@@ -14868,7 +14932,7 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [docs, fetcher.load]);
-  useEffect36(() => {
+  useEffect37(() => {
     if (fetcher.state === "idle" && fetcher.data && !isDocContent(fetcher.data)) {
       setError("Failed to load document");
     }
@@ -14965,9 +15029,9 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
           })
         }),
         /* @__PURE__ */ jsx45("main", {
-          className: `flex-1 transition-all duration-300 ${sidebarCollapsed ? "pl-0" : "pl-64"}`,
+          className: `flex-1 transition-all duration-300 ${sidebarCollapsed ? "pl-0" : "pl-64"} min-w-0`,
           children: /* @__PURE__ */ jsx45("div", {
-            className: "mx-auto max-w-4xl",
+            className: "mx-auto min-w-0 max-w-4xl px-4 md:px-8",
             children: !selectedDoc ? /* @__PURE__ */ jsx45("div", {
               className: "flex h-96 items-center justify-center",
               children: /* @__PURE__ */ jsxs17("div", {
@@ -14994,13 +15058,13 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
             }) : fetcher.state === "loading" ? /* @__PURE__ */ jsx45(LoadingBar, {}) : error ? /* @__PURE__ */ jsx45(DocumentNotFound, {
               spriteUrl
             }) : currentDoc ? /* @__PURE__ */ jsxs17("article", {
-              className: "markdown-content px-8 py-12",
+              className: "markdown-content min-w-0 py-8 md:py-12",
               children: [
                 /* @__PURE__ */ jsx45(DocumentHeader, {
                   frontmatter: currentDoc.frontmatter
                 }),
                 /* @__PURE__ */ jsx45(Markdown, {
-                  className: "max-w-none",
+                  className: "min-w-0 max-w-none",
                   children: currentDoc.content
                 })
               ]
@@ -15193,4 +15257,4 @@ export {
   Markdown
 };
 
-//# debugId=9C53D47850A1265D64756E2164756E21
+//# debugId=02AB79E7BE8517A764756E2164756E21
