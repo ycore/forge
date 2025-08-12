@@ -4,8 +4,16 @@ interface MarkdownProps {
 }
 
 export interface MarkdownContent {
-  frontmatter: Record<string, any>;
+  frontmatter: Frontmatter;
   content: string;
+}
+
+export interface Frontmatter {
+  title?: string;
+  description?: string;
+  date?: string;
+  tags?: string[];
+  [key: string]: string | number | boolean | string[] | undefined;
 }
 
 export interface MarkdownMeta {

@@ -138,8 +138,8 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Co
         </button>
 
         {/* Main content */}
-        <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'pl-0' : 'pl-64'}`}>
-          <div className="mx-auto max-w-4xl">
+        <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'pl-0' : 'pl-64'} min-w-0`}>
+          <div className='mx-auto min-w-0 max-w-4xl px-4 md:px-8'>
             {!selectedDoc ? (
               <div className="flex h-96 items-center justify-center">
                 <div className="text-center">
@@ -155,9 +155,9 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Co
             ) : error ? (
               <DocumentNotFound spriteUrl={spriteUrl} />
             ) : currentDoc ? (
-              <article className="markdown-content px-8 py-12">
+              <article className='markdown-content min-w-0 py-8 md:py-12'>
                 <DocumentHeader frontmatter={currentDoc.frontmatter} />
-                <Markdown className="max-w-none">{currentDoc.content}</Markdown>
+                <Markdown className='min-w-0 max-w-none'>{currentDoc.content}</Markdown>
               </article>
             ) : (
               <DocumentNotFound spriteUrl={spriteUrl} />
