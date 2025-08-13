@@ -1,6 +1,6 @@
-import type { GlobalManifest } from '../vite/plugins/@types/markdown-builder.types';
-import { ASSET_PREFIX } from '../vite/plugins/@types/markdown-builder.types';
-import type { MarkdownContent, MarkdownMeta } from './markdown-loader';
+import type { GlobalManifest, MarkdownContent, MarkdownMeta } from '../@types/markdown.types';
+import { fetchDecompressed } from './markdown-compression';
+import { getAssetUrl } from './utils';
 
 // Cache for loaded data to avoid multiple file reads
 let manifestCache: MarkdownMeta[] | null = null;
@@ -8,11 +8,47 @@ let globalManifestCache: GlobalManifest | null = null;
 let contentCache: Record<string, MarkdownContent> | null = null;
 const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map();
 
-// Helper function to get asset URL for fetching at runtime
-function getAssetUrl(filename: string, request?: Request): string {
-  const fetchPrefix = ASSET_PREFIX.fetch.endsWith('/') ? ASSET_PREFIX.fetch.slice(0, -1) : ASSET_PREFIX.fetch;
-  const url = `${fetchPrefix}/${filename}`;
-  return request ? new URL(url, request.url).href : url;
+/**
+ * Fetch JSON content with optional decompression support and fallback
+ * @param url - The URL to fetch from
+ * @returns Parsed JSON content
+ */
+async function fetchContent<T>(url: string): Promise<T> {
+  try {
+    if (url.endsWith('.gz')) {
+      // Try compressed version first
+      try {
+        const decompressedText = await fetchDecompressed(url);
+        return JSON.parse(decompressedText) as T;
+      } catch (compressionError) {
+        // console.warn(`Failed to fetch compressed version ${url}:`, compressionError);
+
+        // Fallback to uncompressed version if compressed fails
+        const fallbackUrl = url.replace('.gz', '');
+        // console.warn(`Trying fallback ${fallbackUrl}`);
+
+        try {
+          const response = await fetch(fallbackUrl);
+          if (!response.ok) {
+            throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
+          }
+          return (await response.json()) as T;
+        } catch (_fallbackError) {
+          // If both compressed and uncompressed fail, throw the original compression error
+          throw compressionError;
+        }
+      }
+    } else {
+      // Standard fetch for uncompressed files
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return (await response.json()) as T;
+    }
+  } catch (error) {
+    throw new Error(`Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
@@ -25,18 +61,11 @@ async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
 
   try {
     const manifestUrl = getAssetUrl('markdown-manifest.json', request);
-    const response = await fetch(manifestUrl);
-
-    if (!response.ok) {
-      console.warn(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
-      return { documents: [], _buildMode: 'single' };
-    }
-
-    const globalManifest = (await response.json()) as GlobalManifest;
+    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl);
     globalManifestCache = globalManifest;
     return globalManifest;
-  } catch (error) {
-    console.warn('Failed to load global manifest:', error);
+  } catch (_error) {
+    // console.warn('Failed to load global manifest:', error);
     return { documents: [], _buildMode: 'single' };
   }
 }
@@ -68,7 +97,7 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
 
   // In folder chunk mode, we don't preload all content
   if (globalManifest._buildMode === 'chunked') {
-    console.warn('getMarkdownContent() called in folder chunk mode. Use getMarkdownDocument() or loadFolderContent() instead.');
+    // console.warn('getMarkdownContent() called in folder chunk mode. Use getMarkdownDocument() or loadFolderContent() instead.');
     return {};
   }
 
@@ -78,18 +107,11 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
 
   try {
     const contentUrl = getAssetUrl('markdown-content.json', request);
-    const response = await fetch(contentUrl);
-
-    if (!response.ok) {
-      console.warn(`Failed to fetch content: ${response.status} ${response.statusText}`);
-      return {};
-    }
-
-    const content = (await response.json()) as Record<string, MarkdownContent>;
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
     contentCache = content;
     return content;
-  } catch (error) {
-    console.warn('Failed to load markdown content:', error);
+  } catch (_error) {
+    // console.warn('Failed to load markdown content:', error);
     return {};
   }
 }
@@ -100,24 +122,21 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
 export async function loadFolderContent(folder: string, request?: Request): Promise<Record<string, MarkdownContent>> {
   // Check cache first
   if (folderContentCache.has(folder)) {
-    return folderContentCache.get(folder)!;
+    const cachedContent = folderContentCache.get(folder);
+    if (cachedContent) {
+      return cachedContent;
+    }
   }
 
   try {
     const folderKey = folder.replace(/[/\\]/g, '-');
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
 
-    const response = await fetch(contentUrl);
-    if (!response.ok) {
-      console.warn(`Failed to fetch folder content for ${folder}: ${response.status} ${response.statusText}`);
-      return {};
-    }
-
-    const content = (await response.json()) as Record<string, MarkdownContent>;
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
     folderContentCache.set(folder, content);
     return content;
-  } catch (error) {
-    console.warn(`Failed to load folder content for ${folder}:`, error);
+  } catch (_error) {
+    // console.warn(`Failed to load folder content for ${folder}:`, error);
     return {};
   }
 }

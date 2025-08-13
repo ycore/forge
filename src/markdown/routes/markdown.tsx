@@ -6,7 +6,8 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-import type { ComponentProps, DocContent, EnhancedMarkdownMeta } from '../../@types/markdown.types';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps } from '../../@types/markdown.types';
+
 import { getMarkdownManifest } from '../markdown-data';
 import { Markdown } from '../markdown-loader';
 
@@ -26,7 +27,7 @@ export async function loader({ request }: { request: Request }): Promise<Enhance
   return manifest as EnhancedMarkdownMeta[];
 }
 
-export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: ComponentProps) {
+export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
   const docs = loaderData;
   const location = useLocation();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
@@ -113,7 +114,10 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Co
                 <ThemeSwitch spriteUrl={spriteUrl}>
                   {themeContext
                     ? ({ theme }: { theme: Themes }) => (
-                      <button type="button" className="size-5 hover:animate-rotate" aria-label="theme switch"
+                      <button
+                        type="button"
+                        className="size-5 hover:animate-rotate"
+                        aria-label="theme switch"
                         onClick={() => {
                           themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
                         }}
@@ -139,7 +143,7 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Co
 
         {/* Main content */}
         <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'pl-0' : 'pl-64'} min-w-0`}>
-          <div className='mx-auto min-w-0 max-w-4xl px-4 md:px-8'>
+          <div className="mx-auto min-w-0 max-w-4xl px-4 md:px-8">
             {!selectedDoc ? (
               <div className="flex h-96 items-center justify-center">
                 <div className="text-center">
@@ -155,9 +159,9 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Co
             ) : error ? (
               <DocumentNotFound spriteUrl={spriteUrl} />
             ) : currentDoc ? (
-              <article className='markdown-content min-w-0 py-8 md:py-12'>
+              <article className="markdown-content min-w-0 py-8 md:py-12">
                 <DocumentHeader frontmatter={currentDoc.frontmatter} />
-                <Markdown className='min-w-0 max-w-none'>{currentDoc.content}</Markdown>
+                <Markdown className="min-w-0 max-w-none">{currentDoc.content}</Markdown>
               </article>
             ) : (
               <DocumentNotFound spriteUrl={spriteUrl} />

@@ -2,29 +2,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { gzip } from 'node:zlib';
 import DOMPurify from 'isomorphic-dompurify';
 import { marked } from 'marked';
 import { createHighlighter } from 'shiki';
 import type { Plugin } from 'vite';
-import type { FolderContentChunk, Frontmatter, GlobalManifest, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from './@types/markdown-builder.types';
-import { ASSET_PREFIX } from './@types/markdown-builder.types';
-
-interface MarkdownBuilderOptions {
-  source: string;
-  extension?: string;
-  prefix?: string;
-  updateDate?: boolean;
-  purifyHtml?: boolean;
-  syntaxHighlighter?: SyntaxHighlighter | null;
-  shikiConfig?: ShikiConfig;
-  chunkByFolder?: boolean;
-  incrementalByFolder?: boolean;
-}
-
-interface FileMetadata {
-  mtime: number;
-  size: number;
-}
+import type { FileMetadata, FolderContentChunk, Frontmatter, GlobalManifest, MarkdownBuilderOptions, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from '../../@types/markdown.types';
+import { DOMPURIFY_CONFIG, HIGHLIGHTER_CONFIG, MARKDOWN_CONFIG } from '../markdown-config';
+import { getAssetPath } from '../utils';
 
 const readFile = promisify(fs.readFile);
 const readdir = promisify(fs.readdir);
@@ -32,41 +17,21 @@ const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
 const stat = promisify(fs.stat);
 const utimes = promisify(fs.utimes);
-
-// DOMPurify configuration for markdown content
-const DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'del', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'],
-  ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'class', 'id', 'start', 'type', 'colspan', 'rowspan', 'datetime', 'scope', 'data-*'],
-  FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'button', 'iframe', 'frame', 'frameset', 'noframes'],
-  FORBID_ATTR: ['style', 'on*'],
-  KEEP_CONTENT: true,
-  ALLOW_DATA_ATTR: false,
-};
-
-const HIGHLIGHTER = {
-  LANGS: ['javascript', 'typescript', 'css', 'html', 'bash', 'yaml', 'json', 'markdown'],
-  THEMES: ['night-owl'],
-};
-
-const CONCURRENCY_LIMIT = 10;
-const FOLDER_CONCURRENCY_LIMIT = 5;
-
-// Helper function to get full asset path for files during build
-function getAssetPath(filename: string): string {
-  // Normalize the build prefix to handle leading slashes
-  const buildPrefix = ASSET_PREFIX.build.startsWith('/') ? ASSET_PREFIX.build.slice(1) : ASSET_PREFIX.build;
-  return path.join(process.cwd(), 'public', buildPrefix, filename);
-}
-
-// Helper function to get asset URL for fetching at runtime
-function getAssetUrl(filename: string, request?: Request): string {
-  const fetchPrefix = ASSET_PREFIX.fetch.endsWith('/') ? ASSET_PREFIX.fetch.slice(0, -1) : ASSET_PREFIX.fetch;
-  const url = `${fetchPrefix}/${filename}`;
-  return request ? new URL(url, request.url).href : url;
-}
+const gzipAsync = promisify(gzip);
 
 export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
-  const { source, extension = '.md', prefix = 'markdown', updateDate = true, purifyHtml = true, syntaxHighlighter, shikiConfig, chunkByFolder = false, incrementalByFolder = false } = options;
+  const {
+    source,
+    extension = MARKDOWN_CONFIG.EXTENSION,
+    chunkByFolder = MARKDOWN_CONFIG.CHUNK_BY_FOLDER,
+    incrementalByFolder = MARKDOWN_CONFIG.INCREMENTAL_BY_FOLDER,
+    prefix = MARKDOWN_CONFIG.PREFIX,
+    purifyHtml = MARKDOWN_CONFIG.PURIFY_HTML,
+    shikiConfig,
+    syntaxHighlighter,
+    updateDate = MARKDOWN_CONFIG.UPDATE_DATE,
+    compress = MARKDOWN_CONFIG.COMPRESS,
+  } = options;
 
   let highlighter: SyntaxHighlighter | null = null;
   let isInitialized = false;
@@ -152,14 +117,13 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
       if (!folderMap.has(folder)) {
         folderMap.set(folder, new Map());
       }
-      folderMap.get(folder)!.set(relPath, fileInfo);
+      folderMap.get(folder)?.set(relPath, fileInfo);
     }
 
     return folderMap;
   }
 
   function isFileChanged(prev: MarkdownMeta | undefined, current: FileMetadata): boolean {
-    // console.log('isFileChanged', prev._mtime, current.mtime, prev._size, current.size);
     return !prev || prev._mtime !== current.mtime || prev._size !== current.size;
   }
 
@@ -202,7 +166,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
       if (!prevFilesByFolder.has(folder)) {
         prevFilesByFolder.set(folder, new Map());
       }
-      prevFilesByFolder.get(folder)!.set(meta.path, meta);
+      prevFilesByFolder.get(folder)?.set(meta.path, meta);
     }
 
     // Check each current folder against previous state
@@ -247,7 +211,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
 
     const entries = [...files.entries()];
 
-    await execConcurrently(entries, CONCURRENCY_LIMIT, async ([relPath, { path: filePath, metadata }]) => {
+    await execConcurrently(entries, MARKDOWN_CONFIG.CONCURRENCY.FILES, async ([relPath, { path: filePath, metadata }]) => {
       try {
         const raw = await readFile(filePath, 'utf8');
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
@@ -280,7 +244,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
 
     const entries = [...folderFiles.entries()];
 
-    await execConcurrently(entries, CONCURRENCY_LIMIT, async ([relPath, { path: filePath, metadata }]) => {
+    await execConcurrently(entries, MARKDOWN_CONFIG.CONCURRENCY.FILES, async ([relPath, { path: filePath, metadata }]) => {
       try {
         const raw = await readFile(filePath, 'utf8');
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
@@ -312,9 +276,10 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
     let totalErrors = 0;
 
     // Process folders in parallel with limited concurrency
+    // biome-ignore lint/style/noNonNullAssertion: satisfactory
     const folderEntries = Array.from(changedFolders).map(folder => ({ folder, files: allFolders.get(folder)! }));
 
-    await execConcurrently(folderEntries, FOLDER_CONCURRENCY_LIMIT, async ({ folder, files }) => {
+    await execConcurrently(folderEntries, MARKDOWN_CONFIG.CONCURRENCY.FOLDERS, async ({ folder, files }) => {
       try {
         console.info(`📂 Processing folder: ${folder} (${files.size} files)`);
         const result = await processFolderFiles(files);
@@ -349,7 +314,26 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
     }
   }
 
-  // Function to write JSON files
+  // Helper to write compressed versions of JSON files
+  async function writeCompressedVersions(filename: string, content: string) {
+    if (!compress) {
+      return;
+    }
+
+    try {
+      const buffer = Buffer.from(content, 'utf8');
+      const compressedBuffer = await gzipAsync(buffer);
+      const compressedPath = getAssetPath(`${filename}.gz`);
+      await writeFile(compressedPath, compressedBuffer);
+
+      const ratio = ((1 - compressedBuffer.length / content.length) * 100).toFixed(1);
+      console.info(`  📦 ${filename}.gz: ${compressedBuffer.length} bytes compressed ${ratio}%`);
+    } catch (error) {
+      console.warn(`Failed to write compressed version of ${filename}:`, error);
+    }
+  }
+
+  // Function to write JSON files with optional compression
   async function writeMarkdownFiles(manifest: MarkdownMeta[], content: Record<string, any>, chunkedFolders?: string[]) {
     try {
       const dir = path.dirname(getAssetPath('dummy'));
@@ -362,10 +346,21 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         ...(chunkByFolder && chunkedFolders && { chunkedFolders }),
       };
 
-      await writeFile(getAssetPath(`${prefix}-manifest.json`), JSON.stringify(globalManifest, null, 2));
+      // Write manifest (always uncompressed - small file, frequently accessed)
+      const manifestContent = JSON.stringify(globalManifest, null, 2);
+      await writeFile(getAssetPath(`${prefix}-manifest.json`), manifestContent);
 
-      if (!chunkByFolder) {
-        await writeFile(getAssetPath(`${prefix}-content.json`), JSON.stringify(content, null, 2));
+      // Write content if not chunked
+      if (!chunkByFolder && Object.keys(content).length > 0) {
+        const contentJson = JSON.stringify(content, null, 2);
+
+        if (compress) {
+          // Only write compressed version for content files
+          await writeCompressedVersions(`${prefix}-content.json`, contentJson);
+        } else {
+          // Write uncompressed version if compression is disabled
+          await writeFile(getAssetPath(`${prefix}-content.json`), contentJson);
+        }
       }
     } catch (e) {
       console.error('❌ Failed to write markdown JSON files:', e);
@@ -378,9 +373,18 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
       await mkdir(dir, { recursive: true });
 
       const folderKey = folder.replace(/[/\\]/g, '-');
+      const filename = `${prefix}-content-${folderKey}.json`;
 
       // Write folder content chunk only - manifest contains all metadata
-      await writeFile(getAssetPath(`${prefix}-content-${folderKey}.json`), JSON.stringify(content, null, 2));
+      const contentJson = JSON.stringify(content, null, 2);
+
+      if (compress) {
+        // Only write compressed version for content files
+        await writeCompressedVersions(filename, contentJson);
+      } else {
+        // Write uncompressed version if compression is disabled
+        await writeFile(getAssetPath(filename), contentJson);
+      }
     } catch (e) {
       console.error(`❌ Failed to write folder files for ${folder}:`, e);
     }
@@ -403,14 +407,14 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         const result = await processChangedFolders(changedFolders, allFolders);
         const folderList = Array.from(allFolders.keys());
         await writeMarkdownFiles(result.manifest, {}, folderList);
-        console.info(`📄 Processed ${result.processedCount} files with ${result.errorCount} errors`);
+        console.info(`  📄 Processed ${result.processedCount} files with ${result.errorCount} errors`);
       } else {
         const prev = await loadPreviousManifest();
         const { changed, updatedFiles } = await checkForChanges(docsDir, prev);
         if (!changed) return;
         const result = await processChangedFiles(updatedFiles);
         await writeMarkdownFiles(result.manifest, result.content);
-        console.info(`📄 Processing ${updatedFiles.size} updated markdown files from: ${source}`);
+        console.info(`  📄 Processing ${updatedFiles.size} updated markdown files from: ${source}`);
       }
     },
     async handleHotUpdate({ file, server }) {
@@ -528,7 +532,7 @@ function sortManifest(manifest: MarkdownMeta[]): MarkdownMeta[] {
 
 // Create default Shiki highlighter
 async function createShikiHighlighter(config: ShikiConfig = {}): Promise<SyntaxHighlighter> {
-  const { langs = HIGHLIGHTER.LANGS, themes = HIGHLIGHTER.THEMES } = config;
+  const { langs = [...HIGHLIGHTER_CONFIG.LANGS], themes = [...HIGHLIGHTER_CONFIG.THEMES] } = config;
   const highlighter = await createHighlighter({ langs, themes });
 
   return {
