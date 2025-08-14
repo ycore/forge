@@ -40,17 +40,18 @@
     "src"
   ],
   "peerDependencies": {
+    "@ycore/componentry": "catalog:peer",
     "clsx": "catalog:peer",
+    "isomorphic-dompurify": "catalog:peer",
+    "marked": "catalog:peer",
     "react": "catalog:peer",
     "react-dom": "catalog:peer",
-    "react-router": "catalog:peer"
+    "react-router": "catalog:peer",
+    "shiki": "catalog:peer"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:dev",
     "@types/react": "catalog:dev",
-    "isomorphic-dompurify": "catalog:dev",
-    "marked": "catalog:dev",
-    "shiki": "catalog:dev",
     "vite": "catalog:dev"
   },
   "scripts": {
