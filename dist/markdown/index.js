@@ -444,32 +444,47 @@ var globalManifestCache = null;
 var contentCache = null;
 var folderContentCache = new Map;
 async function fetchContent(url) {
+  console.log("fetchContent: Starting fetch for URL:", url);
   try {
     if (url.endsWith(".gz")) {
+      console.log("fetchContent: Detected compressed file, attempting decompression");
       try {
         const decompressedText = await fetchDecompressed(url);
-        return JSON.parse(decompressedText);
+        console.log("fetchContent: Successfully decompressed, text length:", decompressedText.length);
+        const parsed = JSON.parse(decompressedText);
+        console.log("fetchContent: Successfully parsed JSON from compressed file");
+        return parsed;
       } catch (compressionError) {
+        console.warn(`fetchContent: Failed to fetch compressed version ${url}:`, compressionError);
         const fallbackUrl = url.replace(".gz", "");
+        console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
         try {
           const response = await fetch(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
-          return await response.json();
-        } catch (_fallbackError) {
+          const parsed = await response.json();
+          console.log("fetchContent: Successfully fetched and parsed fallback uncompressed file");
+          return parsed;
+        } catch (fallbackError) {
+          console.error("fetchContent: Fallback also failed:", fallbackError);
           throw compressionError;
         }
       }
     } else {
+      console.log("fetchContent: Fetching uncompressed file");
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      return await response.json();
+      const parsed = await response.json();
+      console.log("fetchContent: Successfully fetched and parsed uncompressed file");
+      return parsed;
     }
   } catch (error) {
-    throw new Error(`Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`);
+    const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`;
+    console.error("fetchContent: Final error:", errorMsg);
+    throw new Error(errorMsg);
   }
 }
 async function getGlobalManifest(request) {
@@ -478,10 +493,13 @@ async function getGlobalManifest(request) {
   }
   try {
     const manifestUrl = getAssetUrl("markdown-manifest.json", request);
+    console.log("Fetching global manifest from URL:", manifestUrl);
     const globalManifest = await fetchContent(manifestUrl);
+    console.log("Successfully loaded global manifest with", globalManifest.documents.length, "documents");
     globalManifestCache = globalManifest;
     return globalManifest;
-  } catch (_error) {
+  } catch (error) {
+    console.error("Failed to load global manifest:", error);
     return { documents: [], _buildMode: "single" };
   }
 }
@@ -512,19 +530,24 @@ async function getMarkdownContent(request) {
   }
 }
 async function loadFolderContent(folder, request) {
+  console.log("loadFolderContent: Loading content for folder:", folder);
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
     if (cachedContent) {
+      console.log("loadFolderContent: Found cached content for folder:", folder);
       return cachedContent;
     }
   }
   try {
     const folderKey = folder.replace(/[/\\]/g, "-");
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
+    console.log("loadFolderContent: Generated content URL:", contentUrl, "for folder:", folder);
     const content = await fetchContent(contentUrl);
+    console.log("loadFolderContent: Successfully loaded content with", Object.keys(content).length, "documents for folder:", folder);
     folderContentCache.set(folder, content);
     return content;
-  } catch (_error) {
+  } catch (error) {
+    console.error(`loadFolderContent: Failed to load folder content for ${folder}:`, error);
     return {};
   }
 }
@@ -962,4 +985,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=C7E297F7157DDAD364756E2164756E21
+//# debugId=4AB7CE84E5594F3164756E2164756E21

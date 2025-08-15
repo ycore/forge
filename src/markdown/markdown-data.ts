@@ -14,40 +14,54 @@ const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map
  * @returns Parsed JSON content
  */
 async function fetchContent<T>(url: string): Promise<T> {
+  console.log('fetchContent: Starting fetch for URL:', url);
+  
   try {
     if (url.endsWith('.gz')) {
+      console.log('fetchContent: Detected compressed file, attempting decompression');
       // Try compressed version first
       try {
         const decompressedText = await fetchDecompressed(url);
-        return JSON.parse(decompressedText) as T;
+        console.log('fetchContent: Successfully decompressed, text length:', decompressedText.length);
+        const parsed = JSON.parse(decompressedText) as T;
+        console.log('fetchContent: Successfully parsed JSON from compressed file');
+        return parsed;
       } catch (compressionError) {
-        // console.warn(`Failed to fetch compressed version ${url}:`, compressionError);
+        console.warn(`fetchContent: Failed to fetch compressed version ${url}:`, compressionError);
 
         // Fallback to uncompressed version if compressed fails
         const fallbackUrl = url.replace('.gz', '');
-        // console.warn(`Trying fallback ${fallbackUrl}`);
+        console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
 
         try {
           const response = await fetch(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
-          return (await response.json()) as T;
-        } catch (_fallbackError) {
+          const parsed = (await response.json()) as T;
+          console.log('fetchContent: Successfully fetched and parsed fallback uncompressed file');
+          return parsed;
+        } catch (fallbackError) {
+          console.error('fetchContent: Fallback also failed:', fallbackError);
           // If both compressed and uncompressed fail, throw the original compression error
           throw compressionError;
         }
       }
     } else {
+      console.log('fetchContent: Fetching uncompressed file');
       // Standard fetch for uncompressed files
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      return (await response.json()) as T;
+      const parsed = (await response.json()) as T;
+      console.log('fetchContent: Successfully fetched and parsed uncompressed file');
+      return parsed;
     }
   } catch (error) {
-    throw new Error(`Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('fetchContent: Final error:', errorMsg);
+    throw new Error(errorMsg);
   }
 }
 
@@ -61,11 +75,13 @@ async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
 
   try {
     const manifestUrl = getAssetUrl('markdown-manifest.json', request);
+    console.log('Fetching global manifest from URL:', manifestUrl);
     const globalManifest = await fetchContent<GlobalManifest>(manifestUrl);
+    console.log('Successfully loaded global manifest with', globalManifest.documents.length, 'documents');
     globalManifestCache = globalManifest;
     return globalManifest;
-  } catch (_error) {
-    // console.warn('Failed to load global manifest:', error);
+  } catch (error) {
+    console.error('Failed to load global manifest:', error);
     return { documents: [], _buildMode: 'single' };
   }
 }
@@ -120,10 +136,13 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
  * Load content for a specific folder (lazy loading)
  */
 export async function loadFolderContent(folder: string, request?: Request): Promise<Record<string, MarkdownContent>> {
+  console.log('loadFolderContent: Loading content for folder:', folder);
+  
   // Check cache first
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
     if (cachedContent) {
+      console.log('loadFolderContent: Found cached content for folder:', folder);
       return cachedContent;
     }
   }
@@ -131,12 +150,14 @@ export async function loadFolderContent(folder: string, request?: Request): Prom
   try {
     const folderKey = folder.replace(/[/\\]/g, '-');
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
+    console.log('loadFolderContent: Generated content URL:', contentUrl, 'for folder:', folder);
 
     const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
+    console.log('loadFolderContent: Successfully loaded content with', Object.keys(content).length, 'documents for folder:', folder);
     folderContentCache.set(folder, content);
     return content;
-  } catch (_error) {
-    // console.warn(`Failed to load folder content for ${folder}:`, error);
+  } catch (error) {
+    console.error(`loadFolderContent: Failed to load folder content for ${folder}:`, error);
     return {};
   }
 }
