@@ -1,0 +1,253 @@
+import type { GlobalManifest, MarkdownContent, MarkdownMeta } from '../@types/markdown.types';
+import { fetchDecompressed } from './markdown-compression';
+import { getAssetUrl } from './utils';
+
+// Cache for loaded data to avoid multiple file reads
+let manifestCache: MarkdownMeta[] | null = null;
+let globalManifestCache: GlobalManifest | null = null;
+let contentCache: Record<string, MarkdownContent> | null = null;
+const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map();
+
+/**
+ * Fetch JSON content with optional decompression support and fallback
+ * @param url - The URL to fetch from
+ * @returns Parsed JSON content
+ */
+async function fetchContent<T>(url: string): Promise<T> {
+  try {
+    if (url.endsWith('.gz')) {
+      // Try compressed version first
+      try {
+        const decompressedText = await fetchDecompressed(url);
+        return JSON.parse(decompressedText) as T;
+      } catch (compressionError) {
+        // console.warn(`Failed to fetch compressed version ${url}:`, compressionError);
+
+        // Fallback to uncompressed version if compressed fails
+        const fallbackUrl = url.replace('.gz', '');
+        // console.warn(`Trying fallback ${fallbackUrl}`);
+
+        try {
+          const response = await fetch(fallbackUrl);
+          if (!response.ok) {
+            throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
+          }
+          return (await response.json()) as T;
+        } catch (_fallbackError) {
+          // If both compressed and uncompressed fail, throw the original compression error
+          throw compressionError;
+        }
+      }
+    } else {
+      // Standard fetch for uncompressed files
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return (await response.json()) as T;
+    }
+  } catch (error) {
+    throw new Error(`Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Get global manifest data which includes documents and chunking info
+ */
+async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
+  if (globalManifestCache) {
+    return globalManifestCache;
+  }
+
+  try {
+    const manifestUrl = getAssetUrl('markdown-manifest.json', request);
+    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl);
+    globalManifestCache = globalManifest;
+    return globalManifest;
+  } catch (_error) {
+    // console.warn('Failed to load global manifest:', error);
+    return { documents: [], _buildMode: 'single' };
+  }
+}
+
+/**
+ * Get markdown manifest data from generated JSON file
+ * This reads from the consumer app's generated manifest file
+ */
+export async function getMarkdownManifest(request?: Request): Promise<MarkdownMeta[]> {
+  if (manifestCache) {
+    return manifestCache;
+  }
+
+  const globalManifest = await getGlobalManifest(request);
+
+  // Filter out build metadata for runtime use
+  const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
+
+  manifestCache = cleanManifest;
+  return cleanManifest;
+}
+
+/**
+ * Get markdown content data from generated JSON file
+ * This reads from the consumer app's generated content file or folder chunks
+ */
+export async function getMarkdownContent(request?: Request): Promise<Record<string, MarkdownContent>> {
+  const globalManifest = await getGlobalManifest(request);
+
+  // In folder chunk mode, we don't preload all content
+  if (globalManifest._buildMode === 'chunked') {
+    // console.warn('getMarkdownContent() called in folder chunk mode. Use getMarkdownDocument() or loadFolderContent() instead.');
+    return {};
+  }
+
+  if (contentCache) {
+    return contentCache;
+  }
+
+  try {
+    const contentUrl = getAssetUrl('markdown-content.json', request);
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
+    contentCache = content;
+    return content;
+  } catch (_error) {
+    // console.warn('Failed to load markdown content:', error);
+    return {};
+  }
+}
+
+/**
+ * Load content for a specific folder (lazy loading)
+ */
+export async function loadFolderContent(folder: string, request?: Request): Promise<Record<string, MarkdownContent>> {
+  // Check cache first
+  if (folderContentCache.has(folder)) {
+    const cachedContent = folderContentCache.get(folder);
+    if (cachedContent) {
+      return cachedContent;
+    }
+  }
+
+  try {
+    const folderKey = folder.replace(/[/\\]/g, '-');
+    const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
+
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
+    folderContentCache.set(folder, content);
+    return content;
+  } catch (_error) {
+    // console.warn(`Failed to load folder content for ${folder}:`, error);
+    return {};
+  }
+}
+
+/**
+ * Get all documents for a specific folder
+ */
+export async function getFolderDocuments(folder: string, request?: Request): Promise<MarkdownContent[]> {
+  const content = await loadFolderContent(folder, request);
+  return Object.values(content);
+}
+
+/**
+ * Get a specific markdown document by slug
+ */
+export async function getMarkdownDocument(slug: string, request?: Request): Promise<MarkdownContent | null> {
+  const globalManifest = await getGlobalManifest(request);
+
+  // In folder chunk mode, we need to determine which folder the document is in
+  if (globalManifest._buildMode === 'chunked') {
+    const manifest = await getMarkdownManifest(request);
+    const docMeta = manifest.find(doc => doc.slug === slug);
+
+    if (!docMeta || !docMeta.folder) {
+      return null;
+    }
+
+    const folderContent = await loadFolderContent(docMeta.folder, request);
+    return folderContent[slug] || null;
+  }
+
+  // Fallback to traditional mode
+  const content = await getMarkdownContent(request);
+  return content[slug] || null;
+}
+
+/**
+ * Clear the cache (useful for testing or hot reload)
+ */
+export function clearMarkdownCache(): void {
+  manifestCache = null;
+  globalManifestCache = null;
+  contentCache = null;
+  folderContentCache.clear();
+}
+
+/**
+ * Clear cache for a specific folder
+ */
+export function clearFolderCache(folder: string): void {
+  folderContentCache.delete(folder);
+}
+
+/**
+ * Preload content for multiple folders
+ */
+export async function preloadFolders(folders: string[], request?: Request): Promise<void> {
+  await Promise.all(folders.map(folder => loadFolderContent(folder, request)));
+}
+
+/**
+ * Check if a document exists by slug
+ */
+export async function hasMarkdownDocument(slug: string, request?: Request): Promise<boolean> {
+  const globalManifest = await getGlobalManifest(request);
+
+  if (globalManifest._buildMode === 'chunked') {
+    const manifest = await getMarkdownManifest(request);
+    return manifest.some(doc => doc.slug === slug);
+  }
+
+  const content = await getMarkdownContent(request);
+  return slug in content;
+}
+
+/**
+ * Get documents by folder with pagination support
+ */
+export async function getFolderDocumentsPaginated(folder: string, offset = 0, limit = 10, request?: Request): Promise<{ documents: MarkdownMeta[]; total: number; hasMore: boolean }> {
+  const manifest = await getMarkdownManifest(request);
+  const folderDocs = manifest.filter(doc => doc.folder === folder);
+  const total = folderDocs.length;
+  const paginatedDocs = folderDocs.slice(offset, offset + limit);
+
+  return {
+    documents: paginatedDocs,
+    total,
+    hasMore: offset + limit < total,
+  };
+}
+
+/**
+ * Get all unique folders from manifest
+ */
+export async function getAllFolders(request?: Request): Promise<string[]> {
+  const manifest = await getMarkdownManifest(request);
+  const folders = new Set<string>();
+
+  manifest.forEach(doc => {
+    if (doc.folder) {
+      folders.add(doc.folder);
+    }
+  });
+
+  return Array.from(folders).sort();
+}
+
+/**
+ * Get the current build mode from the manifest
+ */
+export async function getBuildMode(request?: Request): Promise<'single' | 'chunked'> {
+  const globalManifest = await getGlobalManifest(request);
+  return globalManifest._buildMode;
+}

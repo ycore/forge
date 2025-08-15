@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "sources": ["../../../src/adapters/cloudflare/context.server.ts"],
+  "sourcesContent": [
+    "import { unstable_createContext, type unstable_RouterContextProvider } from 'react-router';\n\nexport const CloudflareContext = unstable_createContext<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>();\n\nexport function getBindings(context: Readonly<unstable_RouterContextProvider>) {\n  return context.get(CloudflareContext).env;\n}\n\nexport function getExecutionContext(context: Readonly<unstable_RouterContextProvider>): ExecutionContext {\n  return context.get(CloudflareContext).ctx;\n}\n\nexport function getRequestProperties(context: Readonly<unstable_RouterContextProvider>): RequestInitCfProperties | undefined {\n  return context.get(CloudflareContext).cf;\n}\n\nexport function waitUntil<T>(context: Readonly<unstable_RouterContextProvider>, promise: Promise<T>) {\n  return getExecutionContext(context).waitUntil(promise);\n}\n"
+  ],
+  "mappings": ";AAAA;AAEO,IAAM,oBAAoB,uBAAqG;AAE/H,SAAS,WAAW,CAAC,SAAmD;AAAA,EAC7E,OAAO,QAAQ,IAAI,iBAAiB,EAAE;AAAA;AAGjC,SAAS,mBAAmB,CAAC,SAAqE;AAAA,EACvG,OAAO,QAAQ,IAAI,iBAAiB,EAAE;AAAA;AAOjC,SAAS,SAAY,CAAC,SAAmD,SAAqB;AAAA,EACnG,OAAO,oBAAoB,OAAO,EAAE,UAAU,OAAO;AAAA;",
+  "debugId": "CF5FD5C65CADFD1464756E2164756E21",
+  "names": []
+}
