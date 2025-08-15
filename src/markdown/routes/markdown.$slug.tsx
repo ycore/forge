@@ -1,11 +1,7 @@
 import { redirect } from 'react-router';
+import type { LoaderArgs } from '../../@types/markdown.$slug.types';
 import { getMarkdownDocument } from '../markdown-data';
 import { routesTemplate } from './markdown';
-
-interface LoaderArgs {
-  params: { '*': string };
-  request: Request;
-}
 
 export async function loader({ params, request }: LoaderArgs) {
   const slug = params['*'];
