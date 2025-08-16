@@ -394,8 +394,9 @@ async function decompressGzip(compressedData) {
     throw new Error(`Gzip decompression failed: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 }
-async function fetchDecompressed(url) {
-  const response = await fetch(url);
+async function fetchDecompressed(url, assets) {
+  const fetchFn = assets ? (input, init) => assets.fetch(input, init) : fetch;
+  const response = await fetchFn(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
   }
@@ -443,13 +444,14 @@ var manifestCache = null;
 var globalManifestCache = null;
 var contentCache = null;
 var folderContentCache = new Map;
-async function fetchContent(url) {
+async function fetchContent(url, assets) {
   console.log("fetchContent: Starting fetch for URL:", url);
+  const fetchFn = assets ? (input, init) => assets.fetch(input, init) : fetch;
   try {
     if (url.endsWith(".gz")) {
       console.log("fetchContent: Detected compressed file, attempting decompression");
       try {
-        const decompressedText = await fetchDecompressed(url);
+        const decompressedText = await fetchDecompressed(url, assets);
         console.log("fetchContent: Successfully decompressed, text length:", decompressedText.length);
         const parsed = JSON.parse(decompressedText);
         console.log("fetchContent: Successfully parsed JSON from compressed file");
@@ -459,7 +461,7 @@ async function fetchContent(url) {
         const fallbackUrl = url.replace(".gz", "");
         console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
         try {
-          const response = await fetch(fallbackUrl);
+          const response = await fetchFn(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
@@ -473,7 +475,7 @@ async function fetchContent(url) {
       }
     } else {
       console.log("fetchContent: Fetching uncompressed file");
-      const response = await fetch(url);
+      const response = await fetchFn(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -487,14 +489,14 @@ async function fetchContent(url) {
     throw new Error(errorMsg);
   }
 }
-async function getGlobalManifest(request) {
+async function getGlobalManifest(request, assets) {
   if (globalManifestCache) {
     return globalManifestCache;
   }
   try {
     const manifestUrl = getAssetUrl("markdown-manifest.json", request);
     console.log("Fetching global manifest from URL:", manifestUrl);
-    const globalManifest = await fetchContent(manifestUrl);
+    const globalManifest = await fetchContent(manifestUrl, assets);
     console.log("Successfully loaded global manifest with", globalManifest.documents.length, "documents");
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -503,17 +505,17 @@ async function getGlobalManifest(request) {
     return { documents: [], _buildMode: "single" };
   }
 }
-async function getMarkdownManifest(request) {
+async function getMarkdownManifest(request, assets) {
   if (manifestCache) {
     return manifestCache;
   }
-  const globalManifest = await getGlobalManifest(request);
+  const globalManifest = await getGlobalManifest(request, assets);
   const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
   manifestCache = cleanManifest;
   return cleanManifest;
 }
-async function getMarkdownContent(request) {
-  const globalManifest = await getGlobalManifest(request);
+async function getMarkdownContent(request, assets) {
+  const globalManifest = await getGlobalManifest(request, assets);
   if (globalManifest._buildMode === "chunked") {
     return {};
   }
@@ -522,14 +524,14 @@ async function getMarkdownContent(request) {
   }
   try {
     const contentUrl = getAssetUrl("markdown-content.json", request);
-    const content = await fetchContent(contentUrl);
+    const content = await fetchContent(contentUrl, assets);
     contentCache = content;
     return content;
   } catch (_error) {
     return {};
   }
 }
-async function loadFolderContent(folder, request) {
+async function loadFolderContent(folder, request, assets) {
   console.log("loadFolderContent: Loading content for folder:", folder);
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
@@ -542,7 +544,7 @@ async function loadFolderContent(folder, request) {
     const folderKey = folder.replace(/[/\\]/g, "-");
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
     console.log("loadFolderContent: Generated content URL:", contentUrl, "for folder:", folder);
-    const content = await fetchContent(contentUrl);
+    const content = await fetchContent(contentUrl, assets);
     console.log("loadFolderContent: Successfully loaded content with", Object.keys(content).length, "documents for folder:", folder);
     folderContentCache.set(folder, content);
     return content;
@@ -551,18 +553,18 @@ async function loadFolderContent(folder, request) {
     return {};
   }
 }
-async function getMarkdownDocument(slug, request) {
-  const globalManifest = await getGlobalManifest(request);
+async function getMarkdownDocument(slug, request, assets) {
+  const globalManifest = await getGlobalManifest(request, assets);
   if (globalManifest._buildMode === "chunked") {
-    const manifest = await getMarkdownManifest(request);
+    const manifest = await getMarkdownManifest(request, assets);
     const docMeta = manifest.find((doc) => doc.slug === slug);
     if (!docMeta || !docMeta.folder) {
       return null;
     }
-    const folderContent = await loadFolderContent(docMeta.folder, request);
+    const folderContent = await loadFolderContent(docMeta.folder, request, assets);
     return folderContent[slug] || null;
   }
-  const content = await getMarkdownContent(request);
+  const content = await getMarkdownContent(request, assets);
   return content[slug] || null;
 }
 function clearMarkdownCache() {
@@ -571,13 +573,13 @@ function clearMarkdownCache() {
   contentCache = null;
   folderContentCache.clear();
 }
-async function hasMarkdownDocument(slug, request) {
-  const globalManifest = await getGlobalManifest(request);
+async function hasMarkdownDocument(slug, request, assets) {
+  const globalManifest = await getGlobalManifest(request, assets);
   if (globalManifest._buildMode === "chunked") {
-    const manifest = await getMarkdownManifest(request);
+    const manifest = await getMarkdownManifest(request, assets);
     return manifest.some((doc) => doc.slug === slug);
   }
-  const content = await getMarkdownContent(request);
+  const content = await getMarkdownContent(request, assets);
   return slug in content;
 }
 // src/markdown/markdown-loader.tsx
@@ -600,6 +602,15 @@ import { Link } from "@ycore/componentry/shadcn-ui";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useFetcher, useLocation } from "react-router";
+
+// src/adapters/cloudflare/context.server.ts
+import { unstable_createContext } from "react-router";
+var CloudflareContext = unstable_createContext();
+function getAssets(context) {
+  return context.get(CloudflareContext).env.ASSETS;
+}
+
+// src/markdown/routes/markdown.tsx
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var isDocContent = (data) => {
   return typeof data === "object" && data !== null && "content" in data && "frontmatter" in data && "slug" in data;
@@ -608,8 +619,9 @@ var routesTemplate = {
   docs: (slug) => `/docs#${slug}`,
   docsApi: (slug) => `/docs/${slug}?api`
 };
-async function loader({ request }) {
-  const manifest = await getMarkdownManifest(request);
+async function loader({ request, context }) {
+  const assets = context ? getAssets(context) : undefined;
+  const manifest = await getMarkdownManifest(request, assets);
   return manifest;
 }
 function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
@@ -936,7 +948,7 @@ var DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }) => {
 });
 // src/markdown/routes/markdown.$slug.tsx
 import { redirect } from "react-router";
-async function loader2({ params, request }) {
+async function loader2({ params, request, context }) {
   const slug = params["*"];
   if (!slug || typeof slug !== "string" || slug.trim() === "") {
     throw new Response("Invalid document slug", { status: 400 });
@@ -948,9 +960,10 @@ async function loader2({ params, request }) {
   if (sanitizedSlug.includes("..") || sanitizedSlug.startsWith("/") || sanitizedSlug.endsWith("/")) {
     throw new Response("Invalid document slug format", { status: 400 });
   }
+  const assets = context ? getAssets(context) : undefined;
   const url = new URL(request.url);
   const isApiCall = url.searchParams.has("api") || request.headers.get("Accept")?.includes("application/json");
-  const doc = await getMarkdownDocument(sanitizedSlug, request);
+  const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
   if (!doc) {
     throw new Response("Document not found", { status: 404 });
   }
@@ -985,4 +998,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=4AB7CE84E5594F3164756E2164756E21
+//# debugId=A7D7FD3D7BED59BF64756E2164756E21
