@@ -1,1 +1,1 @@
-export { CloudflareContext, getBindings, waitUntil } from './context.server';
+export { CloudflareContext, getBindings, getExecutionContext, getRequestProperties, waitUntil } from './context.server';

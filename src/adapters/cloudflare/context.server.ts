@@ -17,3 +17,7 @@ export function getRequestProperties(context: Readonly<unstable_RouterContextPro
 export function waitUntil<T>(context: Readonly<unstable_RouterContextProvider>, promise: Promise<T>) {
   return getExecutionContext(context).waitUntil(promise);
 }
+
+export function getAssets(context: Readonly<unstable_RouterContextProvider>): Fetcher | undefined {
+  return context.get(CloudflareContext).env.ASSETS;
+}

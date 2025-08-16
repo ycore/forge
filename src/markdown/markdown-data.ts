@@ -11,17 +11,21 @@ const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map
 /**
  * Fetch JSON content with optional decompression support and fallback
  * @param url - The URL to fetch from
+ * @param assets - Optional Cloudflare ASSETS binding for static asset serving
  * @returns Parsed JSON content
  */
-async function fetchContent<T>(url: string): Promise<T> {
+async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
   console.log('fetchContent: Starting fetch for URL:', url);
+  
+  // Use ASSETS binding if available (Cloudflare Worker environment)
+  const fetchFn = assets ? (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init) : fetch;
   
   try {
     if (url.endsWith('.gz')) {
       console.log('fetchContent: Detected compressed file, attempting decompression');
       // Try compressed version first
       try {
-        const decompressedText = await fetchDecompressed(url);
+        const decompressedText = await fetchDecompressed(url, assets);
         console.log('fetchContent: Successfully decompressed, text length:', decompressedText.length);
         const parsed = JSON.parse(decompressedText) as T;
         console.log('fetchContent: Successfully parsed JSON from compressed file');
@@ -34,7 +38,7 @@ async function fetchContent<T>(url: string): Promise<T> {
         console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
 
         try {
-          const response = await fetch(fallbackUrl);
+          const response = await fetchFn(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
@@ -50,7 +54,7 @@ async function fetchContent<T>(url: string): Promise<T> {
     } else {
       console.log('fetchContent: Fetching uncompressed file');
       // Standard fetch for uncompressed files
-      const response = await fetch(url);
+      const response = await fetchFn(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -68,7 +72,7 @@ async function fetchContent<T>(url: string): Promise<T> {
 /**
  * Get global manifest data which includes documents and chunking info
  */
-async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
+async function getGlobalManifest(request?: Request, assets?: Fetcher): Promise<GlobalManifest> {
   if (globalManifestCache) {
     return globalManifestCache;
   }
@@ -76,7 +80,7 @@ async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
   try {
     const manifestUrl = getAssetUrl('markdown-manifest.json', request);
     console.log('Fetching global manifest from URL:', manifestUrl);
-    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl);
+    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl, assets);
     console.log('Successfully loaded global manifest with', globalManifest.documents.length, 'documents');
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -90,12 +94,12 @@ async function getGlobalManifest(request?: Request): Promise<GlobalManifest> {
  * Get markdown manifest data from generated JSON file
  * This reads from the consumer app's generated manifest file
  */
-export async function getMarkdownManifest(request?: Request): Promise<MarkdownMeta[]> {
+export async function getMarkdownManifest(request?: Request, assets?: Fetcher): Promise<MarkdownMeta[]> {
   if (manifestCache) {
     return manifestCache;
   }
 
-  const globalManifest = await getGlobalManifest(request);
+  const globalManifest = await getGlobalManifest(request, assets);
 
   // Filter out build metadata for runtime use
   const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
@@ -108,8 +112,8 @@ export async function getMarkdownManifest(request?: Request): Promise<MarkdownMe
  * Get markdown content data from generated JSON file
  * This reads from the consumer app's generated content file or folder chunks
  */
-export async function getMarkdownContent(request?: Request): Promise<Record<string, MarkdownContent>> {
-  const globalManifest = await getGlobalManifest(request);
+export async function getMarkdownContent(request?: Request, assets?: Fetcher): Promise<Record<string, MarkdownContent>> {
+  const globalManifest = await getGlobalManifest(request, assets);
 
   // In folder chunk mode, we don't preload all content
   if (globalManifest._buildMode === 'chunked') {
@@ -123,7 +127,7 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
 
   try {
     const contentUrl = getAssetUrl('markdown-content.json', request);
-    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets);
     contentCache = content;
     return content;
   } catch (_error) {
@@ -135,7 +139,7 @@ export async function getMarkdownContent(request?: Request): Promise<Record<stri
 /**
  * Load content for a specific folder (lazy loading)
  */
-export async function loadFolderContent(folder: string, request?: Request): Promise<Record<string, MarkdownContent>> {
+export async function loadFolderContent(folder: string, request?: Request, assets?: Fetcher): Promise<Record<string, MarkdownContent>> {
   console.log('loadFolderContent: Loading content for folder:', folder);
   
   // Check cache first
@@ -152,7 +156,7 @@ export async function loadFolderContent(folder: string, request?: Request): Prom
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
     console.log('loadFolderContent: Generated content URL:', contentUrl, 'for folder:', folder);
 
-    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl);
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets);
     console.log('loadFolderContent: Successfully loaded content with', Object.keys(content).length, 'documents for folder:', folder);
     folderContentCache.set(folder, content);
     return content;
@@ -165,32 +169,32 @@ export async function loadFolderContent(folder: string, request?: Request): Prom
 /**
  * Get all documents for a specific folder
  */
-export async function getFolderDocuments(folder: string, request?: Request): Promise<MarkdownContent[]> {
-  const content = await loadFolderContent(folder, request);
+export async function getFolderDocuments(folder: string, request?: Request, assets?: Fetcher): Promise<MarkdownContent[]> {
+  const content = await loadFolderContent(folder, request, assets);
   return Object.values(content);
 }
 
 /**
  * Get a specific markdown document by slug
  */
-export async function getMarkdownDocument(slug: string, request?: Request): Promise<MarkdownContent | null> {
-  const globalManifest = await getGlobalManifest(request);
+export async function getMarkdownDocument(slug: string, request?: Request, assets?: Fetcher): Promise<MarkdownContent | null> {
+  const globalManifest = await getGlobalManifest(request, assets);
 
   // In folder chunk mode, we need to determine which folder the document is in
   if (globalManifest._buildMode === 'chunked') {
-    const manifest = await getMarkdownManifest(request);
+    const manifest = await getMarkdownManifest(request, assets);
     const docMeta = manifest.find(doc => doc.slug === slug);
 
     if (!docMeta || !docMeta.folder) {
       return null;
     }
 
-    const folderContent = await loadFolderContent(docMeta.folder, request);
+    const folderContent = await loadFolderContent(docMeta.folder, request, assets);
     return folderContent[slug] || null;
   }
 
   // Fallback to traditional mode
-  const content = await getMarkdownContent(request);
+  const content = await getMarkdownContent(request, assets);
   return content[slug] || null;
 }
 
@@ -214,30 +218,30 @@ export function clearFolderCache(folder: string): void {
 /**
  * Preload content for multiple folders
  */
-export async function preloadFolders(folders: string[], request?: Request): Promise<void> {
-  await Promise.all(folders.map(folder => loadFolderContent(folder, request)));
+export async function preloadFolders(folders: string[], request?: Request, assets?: Fetcher): Promise<void> {
+  await Promise.all(folders.map(folder => loadFolderContent(folder, request, assets)));
 }
 
 /**
  * Check if a document exists by slug
  */
-export async function hasMarkdownDocument(slug: string, request?: Request): Promise<boolean> {
-  const globalManifest = await getGlobalManifest(request);
+export async function hasMarkdownDocument(slug: string, request?: Request, assets?: Fetcher): Promise<boolean> {
+  const globalManifest = await getGlobalManifest(request, assets);
 
   if (globalManifest._buildMode === 'chunked') {
-    const manifest = await getMarkdownManifest(request);
+    const manifest = await getMarkdownManifest(request, assets);
     return manifest.some(doc => doc.slug === slug);
   }
 
-  const content = await getMarkdownContent(request);
+  const content = await getMarkdownContent(request, assets);
   return slug in content;
 }
 
 /**
  * Get documents by folder with pagination support
  */
-export async function getFolderDocumentsPaginated(folder: string, offset = 0, limit = 10, request?: Request): Promise<{ documents: MarkdownMeta[]; total: number; hasMore: boolean }> {
-  const manifest = await getMarkdownManifest(request);
+export async function getFolderDocumentsPaginated(folder: string, offset = 0, limit = 10, request?: Request, assets?: Fetcher): Promise<{ documents: MarkdownMeta[]; total: number; hasMore: boolean }> {
+  const manifest = await getMarkdownManifest(request, assets);
   const folderDocs = manifest.filter(doc => doc.folder === folder);
   const total = folderDocs.length;
   const paginatedDocs = folderDocs.slice(offset, offset + limit);
@@ -252,8 +256,8 @@ export async function getFolderDocumentsPaginated(folder: string, offset = 0, li
 /**
  * Get all unique folders from manifest
  */
-export async function getAllFolders(request?: Request): Promise<string[]> {
-  const manifest = await getMarkdownManifest(request);
+export async function getAllFolders(request?: Request, assets?: Fetcher): Promise<string[]> {
+  const manifest = await getMarkdownManifest(request, assets);
   const folders = new Set<string>();
 
   manifest.forEach(doc => {
@@ -268,7 +272,7 @@ export async function getAllFolders(request?: Request): Promise<string[]> {
 /**
  * Get the current build mode from the manifest
  */
-export async function getBuildMode(request?: Request): Promise<'single' | 'chunked'> {
-  const globalManifest = await getGlobalManifest(request);
+export async function getBuildMode(request?: Request, assets?: Fetcher): Promise<'single' | 'chunked'> {
+  const globalManifest = await getGlobalManifest(request, assets);
   return globalManifest._buildMode;
 }

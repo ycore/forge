@@ -1,5 +1,6 @@
 // Consolidated type definitions for markdown system
 import type { ThemeContext } from '@ycore/componentry/impetus';
+import type { unstable_RouterContextProvider } from 'react-router';
 
 export interface Frontmatter {
   title?: string;
@@ -31,6 +32,7 @@ export interface MarkdownPageProps {
   loaderData: EnhancedMarkdownMeta[];
   spriteUrl: string;
   themeContext?: ThemeContext;
+  context?: any;
 }
 
 export interface MarkdownProps {
@@ -105,4 +107,9 @@ export interface ServeOptions {
   maxAge?: number; // Cache max-age in seconds
   prefix?: string; // File prefix (default: 'markdown')
   acceptEncoding?: string; // From request headers
+}
+
+export interface MarkdownLoaderArgs {
+  request: Request;
+  context?: unstable_RouterContextProvider;
 }

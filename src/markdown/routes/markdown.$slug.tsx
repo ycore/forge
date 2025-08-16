@@ -1,9 +1,10 @@
 import { redirect } from 'react-router';
 import type { LoaderArgs } from '../../@types/markdown.$slug.types';
+import { getAssets } from '../../adapters/cloudflare/context.server';
 import { getMarkdownDocument } from '../markdown-data';
 import { routesTemplate } from './markdown';
 
-export async function loader({ params, request }: LoaderArgs) {
+export async function loader({ params, request, context }: LoaderArgs) {
   const slug = params['*'];
 
   // Validate slug
@@ -22,11 +23,14 @@ export async function loader({ params, request }: LoaderArgs) {
     throw new Response('Invalid document slug format', { status: 400 });
   }
 
+  // Try to get ASSETS binding from context if available (Cloudflare Worker environment)
+  const assets = context ? getAssets(context) : undefined;
+
   const url = new URL(request.url);
   const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
 
   // Check if the document exists
-  const doc = await getMarkdownDocument(sanitizedSlug, request);
+  const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
   if (!doc) {
     throw new Response('Document not found', { status: 404 });
   }

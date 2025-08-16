@@ -28,8 +28,9 @@ export async function decompressGzip(compressedData: ArrayBuffer): Promise<strin
 /**
  * Fetch and decompress gzip content from a URL
  */
-export async function fetchDecompressed(url: string): Promise<string> {
-  const response = await fetch(url);
+export async function fetchDecompressed(url: string, assets?: Fetcher): Promise<string> {
+  const fetchFn = assets ? (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init) : fetch;
+  const response = await fetchFn(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
