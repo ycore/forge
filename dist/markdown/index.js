@@ -624,11 +624,17 @@ function createMarkdownLoader() {
       if (context) {
         try {
           const { env } = context.get(CloudflareContext);
-          assets = env.ASSETS;
-          console.log("markdownLoader: Using ASSETS binding for internal fetch");
-        } catch {
-          console.log("markdownLoader: ASSETS binding not available, using fetch");
+          if (env.ASSETS) {
+            assets = env.ASSETS;
+            console.log("markdownLoader: Using ASSETS binding for internal fetch");
+          } else {
+            console.log("markdownLoader: ASSETS binding is undefined, using fetch");
+          }
+        } catch (error) {
+          console.log("markdownLoader: Failed to get context:", error);
         }
+      } else {
+        console.log("markdownLoader: No context provided, using fetch");
       }
       const manifest = await getMarkdownManifest(request, assets);
       console.log("markdownLoader: Successfully loaded manifest with", manifest.length, "documents");
@@ -981,7 +987,9 @@ function createMarkdownSlugLoader() {
     if (context) {
       try {
         const { env } = context.get(CloudflareContext);
-        assets = env.ASSETS;
+        if (env.ASSETS) {
+          assets = env.ASSETS;
+        }
       } catch {}
     }
     const url = new URL(request.url);
@@ -1022,4 +1030,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=1D10949178F3FB1064756E2164756E21
+//# debugId=F530811C7CEB018064756E2164756E21
