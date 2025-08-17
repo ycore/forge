@@ -30,7 +30,9 @@ export function createMarkdownSlugLoader() {
     if (context) {
       try {
         const { env } = context.get(CloudflareContext);
-        assets = env.ASSETS;
+        if (env.ASSETS) {
+          assets = env.ASSETS;
+        }
       } catch {
         // Context not available (development mode)
       }
