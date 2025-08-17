@@ -612,8 +612,16 @@ var routesTemplate = {
 };
 function createMarkdownLoader() {
   return async function markdownLoader({ request }) {
-    const manifest = await getMarkdownManifest(request);
-    return manifest;
+    try {
+      console.log("markdownLoader: Starting manifest fetch for request URL:", request.url);
+      const manifest = await getMarkdownManifest(request);
+      console.log("markdownLoader: Successfully loaded manifest with", manifest.length, "documents");
+      return manifest;
+    } catch (error) {
+      console.error("markdownLoader: Failed to load manifest:", error);
+      console.error("markdownLoader: Request URL was:", request.url);
+      return [];
+    }
   };
 }
 function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
@@ -991,4 +999,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=ADB2F3F5EA8AD76664756E2164756E21
+//# debugId=2960F25AC7413D2D64756E2164756E21

@@ -23,9 +23,17 @@ export const routesTemplate = {
 // Enhanced loader for Cloudflare Worker environments
 export function createMarkdownLoader() {
   return async function markdownLoader({ request }: { request: Request }): Promise<EnhancedMarkdownMeta[]> {
-    // Works in both Cloudflare Worker and development environments
-    const manifest = await getMarkdownManifest(request);
-    return manifest as EnhancedMarkdownMeta[];
+    try {
+      console.log('markdownLoader: Starting manifest fetch for request URL:', request.url);
+      const manifest = await getMarkdownManifest(request);
+      console.log('markdownLoader: Successfully loaded manifest with', manifest.length, 'documents');
+      return manifest as EnhancedMarkdownMeta[];
+    } catch (error) {
+      console.error('markdownLoader: Failed to load manifest:', error);
+      console.error('markdownLoader: Request URL was:', request.url);
+      // Return empty array so the UI can show "No documentation found" instead of crashing
+      return [];
+    }
   };
 }
 
