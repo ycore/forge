@@ -1,50 +1,50 @@
 import { redirect } from 'react-router';
-import type { LoaderArgs } from '../../@types/markdown.$slug.types';
-import { getAssets } from '../../adapters/cloudflare/context.server';
 import { getMarkdownDocument } from '../markdown-data';
 import { routesTemplate } from './markdown';
 
-export async function loader({ params, request, context }: LoaderArgs) {
-  const slug = params['*'];
+// Enhanced loader for Cloudflare Worker environments
+export function createMarkdownSlugLoader() {
+  return async function markdownSlugLoader({ params, request }: { params: Record<string, string | undefined>; request: Request }) {
+    const slug = params['*'];
 
-  // Validate slug
-  if (!slug || typeof slug !== 'string' || slug.trim() === '') {
-    throw new Response('Invalid document slug', { status: 400 });
-  }
+    // Validate slug
+    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+      throw new Response('Invalid document slug', { status: 400 });
+    }
 
-  // Sanitize slug to prevent directory traversal (allow forward slashes for folder paths)
-  const sanitizedSlug = slug.replace(/[^a-zA-Z0-9-_/]/g, '');
-  if (sanitizedSlug !== slug) {
-    throw new Response('Invalid document slug format', { status: 400 });
-  }
+    // Sanitize slug to prevent directory traversal (allow forward slashes for folder paths)
+    const sanitizedSlug = slug.replace(/[^a-zA-Z0-9-_/]/g, '');
+    if (sanitizedSlug !== slug) {
+      throw new Response('Invalid document slug format', { status: 400 });
+    }
 
-  // Prevent directory traversal attempts
-  if (sanitizedSlug.includes('..') || sanitizedSlug.startsWith('/') || sanitizedSlug.endsWith('/')) {
-    throw new Response('Invalid document slug format', { status: 400 });
-  }
+    // Prevent directory traversal attempts
+    if (sanitizedSlug.includes('..') || sanitizedSlug.startsWith('/') || sanitizedSlug.endsWith('/')) {
+      throw new Response('Invalid document slug format', { status: 400 });
+    }
 
-  // Try to get ASSETS binding from context if available (Cloudflare Worker environment)
-  const assets = context ? getAssets(context) : undefined;
+    // Works in both Cloudflare Worker and development environments
 
-  const url = new URL(request.url);
-  const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
+    const url = new URL(request.url);
+    const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
 
-  // Check if the document exists
-  const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
-  if (!doc) {
-    throw new Response('Document not found', { status: 404 });
-  }
+    // Check if the document exists
+    const doc = await getMarkdownDocument(sanitizedSlug, request);
+    if (!doc) {
+      throw new Response('Document not found', { status: 404 });
+    }
 
-  // If it's an API call, return the document data
-  if (isApiCall) {
-    const enhancedFrontmatter = {
-      ...doc.frontmatter,
-      formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
-    };
+    // If it's an API call, return the document data
+    if (isApiCall) {
+      const enhancedFrontmatter = {
+        ...doc.frontmatter,
+        formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
+      };
 
-    return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: sanitizedSlug });
-  }
+      return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: sanitizedSlug });
+    }
 
-  // Otherwise, redirect to main docs page with fragment
-  return redirect(routesTemplate.docs(sanitizedSlug));
+    // Otherwise, redirect to main docs page with fragment
+    return redirect(routesTemplate.docs(sanitizedSlug));
+  };
 }

@@ -6,8 +6,7 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownLoaderArgs, MarkdownPageProps } from '../../@types/markdown.types';
-import { getAssets } from '../../adapters/cloudflare/context.server';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps } from '../../@types/markdown.types';
 import { getMarkdownManifest } from '../markdown-data';
 import { Markdown } from '../markdown-loader';
 
@@ -21,12 +20,13 @@ export const routesTemplate = {
   docsApi: (slug: string) => `/docs/${slug}?api`,
 };
 
-// Loader that returns the manifest data as-is
-export async function loader({ request, context }: MarkdownLoaderArgs): Promise<EnhancedMarkdownMeta[]> {
-  // Try to get ASSETS binding from context if available (Cloudflare Worker environment)
-  const assets = context ? getAssets(context) : undefined;
-  const manifest = await getMarkdownManifest(request, assets);
-  return manifest as EnhancedMarkdownMeta[];
+// Enhanced loader for Cloudflare Worker environments
+export function createMarkdownLoader() {
+  return async function markdownLoader({ request }: { request: Request }): Promise<EnhancedMarkdownMeta[]> {
+    // Works in both Cloudflare Worker and development environments
+    const manifest = await getMarkdownManifest(request);
+    return manifest as EnhancedMarkdownMeta[];
+  };
 }
 
 export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
