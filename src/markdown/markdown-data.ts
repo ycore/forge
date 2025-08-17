@@ -15,13 +15,13 @@ const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map
  * @returns Parsed JSON content
  */
 async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
-  console.log('fetchContent: Starting fetch for URL:', url);
-  
+  console.log('fetchContent 01: Starting fetch for URL:', url);
+
   // Use ASSETS binding if available (Cloudflare Worker environment)
   let fetchFn: typeof fetch;
   if (assets) {
     fetchFn = (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init);
-    console.log('fetchContent: Using ASSETS binding');
+    console.log('fetchContent 01: Using ASSETS binding');
   } else {
     // In Cloudflare Workers, convert absolute URLs to relative to avoid self-fetch issues
     const isAbsoluteUrl = typeof url === 'string' && url.startsWith('http');
@@ -29,7 +29,7 @@ async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
       try {
         const urlObj = new URL(url);
         const relativePath = urlObj.pathname + urlObj.search;
-        console.log('fetchContent: Converting absolute URL to relative path:', relativePath);
+        console.log('fetchContent 01: Converting absolute URL to relative path:', relativePath);
         fetchFn = (input: RequestInfo | URL, init?: RequestInit) => {
           const finalInput = input === url ? relativePath : input;
           return fetch(finalInput, init);
@@ -41,23 +41,23 @@ async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
       fetchFn = fetch;
     }
   }
-  
+
   try {
     if (url.endsWith('.gz')) {
-      console.log('fetchContent: Detected compressed file, attempting decompression');
+      console.log('fetchContent 01: Detected compressed file, attempting decompression');
       // Try compressed version first
       try {
         const decompressedText = await fetchDecompressed(url, assets);
-        console.log('fetchContent: Successfully decompressed, text length:', decompressedText.length);
+        console.log('fetchContent 01: Successfully decompressed, text length:', decompressedText.length);
         const parsed = JSON.parse(decompressedText) as T;
-        console.log('fetchContent: Successfully parsed JSON from compressed file');
+        console.log('fetchContent 01: Successfully parsed JSON from compressed file');
         return parsed;
       } catch (compressionError) {
-        console.warn(`fetchContent: Failed to fetch compressed version ${url}:`, compressionError);
+        console.warn(`fetchContent 01: Failed to fetch compressed version ${url}:`, compressionError);
 
         // Fallback to uncompressed version if compressed fails
         const fallbackUrl = url.replace('.gz', '');
-        console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
+        console.warn(`fetchContent 01: Trying fallback ${fallbackUrl}`);
 
         try {
           const response = await fetchFn(fallbackUrl);
@@ -65,28 +65,28 @@ async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
           const parsed = (await response.json()) as T;
-          console.log('fetchContent: Successfully fetched and parsed fallback uncompressed file');
+          console.log('fetchContent 01: Successfully fetched and parsed fallback uncompressed file');
           return parsed;
         } catch (fallbackError) {
-          console.error('fetchContent: Fallback also failed:', fallbackError);
+          console.error('fetchContent 01: Fallback also failed:', fallbackError);
           // If both compressed and uncompressed fail, throw the original compression error
           throw compressionError;
         }
       }
     } else {
-      console.log('fetchContent: Fetching uncompressed file');
+      console.log('fetchContent 01: Fetching uncompressed file');
       // Standard fetch for uncompressed files
       const response = await fetchFn(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const parsed = (await response.json()) as T;
-      console.log('fetchContent: Successfully fetched and parsed uncompressed file');
+      console.log('fetchContent 01: Successfully fetched and parsed uncompressed file');
       return parsed;
     }
   } catch (error) {
     const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    console.error('fetchContent: Final error:', errorMsg);
+    console.error('fetchContent 01: Final error:', errorMsg);
     throw new Error(errorMsg);
   }
 }
@@ -163,7 +163,7 @@ export async function getMarkdownContent(request?: Request, assets?: Fetcher): P
  */
 export async function loadFolderContent(folder: string, request?: Request, assets?: Fetcher): Promise<Record<string, MarkdownContent>> {
   console.log('loadFolderContent: Loading content for folder:', folder);
-  
+
   // Check cache first
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
