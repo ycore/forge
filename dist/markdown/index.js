@@ -445,18 +445,18 @@ var globalManifestCache = null;
 var contentCache = null;
 var folderContentCache = new Map;
 async function fetchContent(url, assets) {
-  console.log("fetchContent: Starting fetch for URL:", url);
+  console.log("fetchContent 01: Starting fetch for URL:", url);
   let fetchFn;
   if (assets) {
     fetchFn = (input, init) => assets.fetch(input, init);
-    console.log("fetchContent: Using ASSETS binding");
+    console.log("fetchContent 01: Using ASSETS binding");
   } else {
     const isAbsoluteUrl = typeof url === "string" && url.startsWith("http");
     if (isAbsoluteUrl) {
       try {
         const urlObj = new URL(url);
         const relativePath = urlObj.pathname + urlObj.search;
-        console.log("fetchContent: Converting absolute URL to relative path:", relativePath);
+        console.log("fetchContent 01: Converting absolute URL to relative path:", relativePath);
         fetchFn = (input, init) => {
           const finalInput = input === url ? relativePath : input;
           return fetch(finalInput, init);
@@ -470,43 +470,43 @@ async function fetchContent(url, assets) {
   }
   try {
     if (url.endsWith(".gz")) {
-      console.log("fetchContent: Detected compressed file, attempting decompression");
+      console.log("fetchContent 01: Detected compressed file, attempting decompression");
       try {
         const decompressedText = await fetchDecompressed(url, assets);
-        console.log("fetchContent: Successfully decompressed, text length:", decompressedText.length);
+        console.log("fetchContent 01: Successfully decompressed, text length:", decompressedText.length);
         const parsed = JSON.parse(decompressedText);
-        console.log("fetchContent: Successfully parsed JSON from compressed file");
+        console.log("fetchContent 01: Successfully parsed JSON from compressed file");
         return parsed;
       } catch (compressionError) {
-        console.warn(`fetchContent: Failed to fetch compressed version ${url}:`, compressionError);
+        console.warn(`fetchContent 01: Failed to fetch compressed version ${url}:`, compressionError);
         const fallbackUrl = url.replace(".gz", "");
-        console.warn(`fetchContent: Trying fallback ${fallbackUrl}`);
+        console.warn(`fetchContent 01: Trying fallback ${fallbackUrl}`);
         try {
           const response = await fetchFn(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
           const parsed = await response.json();
-          console.log("fetchContent: Successfully fetched and parsed fallback uncompressed file");
+          console.log("fetchContent 01: Successfully fetched and parsed fallback uncompressed file");
           return parsed;
         } catch (fallbackError) {
-          console.error("fetchContent: Fallback also failed:", fallbackError);
+          console.error("fetchContent 01: Fallback also failed:", fallbackError);
           throw compressionError;
         }
       }
     } else {
-      console.log("fetchContent: Fetching uncompressed file");
+      console.log("fetchContent 01: Fetching uncompressed file");
       const response = await fetchFn(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const parsed = await response.json();
-      console.log("fetchContent: Successfully fetched and parsed uncompressed file");
+      console.log("fetchContent 01: Successfully fetched and parsed uncompressed file");
       return parsed;
     }
   } catch (error) {
     const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`;
-    console.error("fetchContent: Final error:", errorMsg);
+    console.error("fetchContent 01: Final error:", errorMsg);
     throw new Error(errorMsg);
   }
 }
@@ -1051,4 +1051,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=569CD386E42D3D2264756E2164756E21
+//# debugId=BB5CC798EE5D2D4264756E2164756E21
