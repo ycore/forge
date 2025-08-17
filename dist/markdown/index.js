@@ -444,69 +444,80 @@ var manifestCache = null;
 var globalManifestCache = null;
 var contentCache = null;
 var folderContentCache = new Map;
-async function fetchContent(url, assets) {
-  console.log("fetchContent 01: Starting fetch for URL:", url);
+async function fetchContent(url, assets, request) {
+  console.log("fetchContent 02: Starting fetch for URL:", url);
   let fetchFn;
   if (assets) {
     fetchFn = (input, init) => assets.fetch(input, init);
-    console.log("fetchContent 01: Using ASSETS binding");
+    console.log("fetchContent 02: Using ASSETS binding");
   } else {
     const isAbsoluteUrl = typeof url === "string" && url.startsWith("http");
-    if (isAbsoluteUrl) {
+    console.log("fetchContent 02: 1st isAbsoluteUrl", isAbsoluteUrl);
+    if (isAbsoluteUrl && request) {
       try {
         const urlObj = new URL(url);
-        const relativePath = urlObj.pathname + urlObj.search;
-        console.log("fetchContent 01: Converting absolute URL to relative path:", relativePath);
-        fetchFn = (input, init) => {
-          const finalInput = input === url ? relativePath : input;
-          return fetch(finalInput, init);
-        };
+        const requestObj = new URL(request.url);
+        console.log("fetchContent 02: Checking URL", request.url);
+        if (urlObj.origin === requestObj.origin) {
+          const pathOnly = urlObj.pathname + urlObj.search;
+          console.log("fetchContent 02: Using pathname only for same-origin fetch:", pathOnly);
+          fetchFn = (input, init) => {
+            const finalInput = input === url ? pathOnly : input;
+            return fetch(finalInput, init);
+          };
+        } else {
+          fetchFn = fetch;
+          console.log("fetchContent 02: Using 1st fetchFn = fetch");
+        }
       } catch {
+        console.log("fetchContent 02: Using 2nd fetchFn = fetch");
         fetchFn = fetch;
       }
     } else {
+      console.log("fetchContent 02: Using 3rd fetchFn = fetch");
       fetchFn = fetch;
     }
+    console.log("fetchContent 02: 2nd isAbsoluteUrl", isAbsoluteUrl);
   }
   try {
     if (url.endsWith(".gz")) {
-      console.log("fetchContent 01: Detected compressed file, attempting decompression");
+      console.log("fetchContent 02: Detected compressed file, attempting decompression");
       try {
         const decompressedText = await fetchDecompressed(url, assets);
-        console.log("fetchContent 01: Successfully decompressed, text length:", decompressedText.length);
+        console.log("fetchContent 02: Successfully decompressed, text length:", decompressedText.length);
         const parsed = JSON.parse(decompressedText);
-        console.log("fetchContent 01: Successfully parsed JSON from compressed file");
+        console.log("fetchContent 02: Successfully parsed JSON from compressed file");
         return parsed;
       } catch (compressionError) {
-        console.warn(`fetchContent 01: Failed to fetch compressed version ${url}:`, compressionError);
+        console.warn(`fetchContent 02: Failed to fetch compressed version ${url}:`, compressionError);
         const fallbackUrl = url.replace(".gz", "");
-        console.warn(`fetchContent 01: Trying fallback ${fallbackUrl}`);
+        console.warn(`fetchContent 02: Trying fallback ${fallbackUrl}`);
         try {
           const response = await fetchFn(fallbackUrl);
           if (!response.ok) {
             throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
           }
           const parsed = await response.json();
-          console.log("fetchContent 01: Successfully fetched and parsed fallback uncompressed file");
+          console.log("fetchContent 02: Successfully fetched and parsed fallback uncompressed file");
           return parsed;
         } catch (fallbackError) {
-          console.error("fetchContent 01: Fallback also failed:", fallbackError);
+          console.error("fetchContent 02: Fallback also failed:", fallbackError);
           throw compressionError;
         }
       }
     } else {
-      console.log("fetchContent 01: Fetching uncompressed file");
+      console.log("fetchContent 02: Fetching uncompressed file");
       const response = await fetchFn(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const parsed = await response.json();
-      console.log("fetchContent 01: Successfully fetched and parsed uncompressed file");
+      console.log("fetchContent 02: Successfully fetched and parsed uncompressed file");
       return parsed;
     }
   } catch (error) {
     const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`;
-    console.error("fetchContent 01: Final error:", errorMsg);
+    console.error("fetchContent 02: Final error:", errorMsg);
     throw new Error(errorMsg);
   }
 }
@@ -517,7 +528,7 @@ async function getGlobalManifest(request, assets) {
   try {
     const manifestUrl = getAssetUrl("markdown-manifest.json", request);
     console.log("Fetching global manifest from URL:", manifestUrl);
-    const globalManifest = await fetchContent(manifestUrl, assets);
+    const globalManifest = await fetchContent(manifestUrl, assets, request);
     console.log("Successfully loaded global manifest with", globalManifest.documents.length, "documents");
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -545,7 +556,7 @@ async function getMarkdownContent(request, assets) {
   }
   try {
     const contentUrl = getAssetUrl("markdown-content.json", request);
-    const content = await fetchContent(contentUrl, assets);
+    const content = await fetchContent(contentUrl, assets, request);
     contentCache = content;
     return content;
   } catch (_error) {
@@ -565,7 +576,7 @@ async function loadFolderContent(folder, request, assets) {
     const folderKey = folder.replace(/[/\\]/g, "-");
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
     console.log("loadFolderContent: Generated content URL:", contentUrl, "for folder:", folder);
-    const content = await fetchContent(contentUrl, assets);
+    const content = await fetchContent(contentUrl, assets, request);
     console.log("loadFolderContent: Successfully loaded content with", Object.keys(content).length, "documents for folder:", folder);
     folderContentCache.set(folder, content);
     return content;
@@ -1051,4 +1062,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=BB5CC798EE5D2D4264756E2164756E21
+//# debugId=4C4822B427FEEF0F64756E2164756E21
