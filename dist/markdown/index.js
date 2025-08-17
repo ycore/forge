@@ -602,15 +602,6 @@ import { Link } from "@ycore/componentry/shadcn-ui";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useFetcher, useLocation } from "react-router";
-
-// src/adapters/cloudflare/context.server.ts
-import { unstable_createContext } from "react-router";
-var CloudflareContext = unstable_createContext();
-function getAssets(context) {
-  return context.get(CloudflareContext).env.ASSETS;
-}
-
-// src/markdown/routes/markdown.tsx
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var isDocContent = (data) => {
   return typeof data === "object" && data !== null && "content" in data && "frontmatter" in data && "slug" in data;
@@ -619,10 +610,11 @@ var routesTemplate = {
   docs: (slug) => `/docs#${slug}`,
   docsApi: (slug) => `/docs/${slug}?api`
 };
-async function loader({ request, context }) {
-  const assets = context ? getAssets(context) : undefined;
-  const manifest = await getMarkdownManifest(request, assets);
-  return manifest;
+function createMarkdownLoader() {
+  return async function markdownLoader({ request }) {
+    const manifest = await getMarkdownManifest(request);
+    return manifest;
+  };
 }
 function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
   const docs = loaderData;
@@ -948,39 +940,38 @@ var DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }) => {
 });
 // src/markdown/routes/markdown.$slug.tsx
 import { redirect } from "react-router";
-async function loader2({ params, request, context }) {
-  const slug = params["*"];
-  if (!slug || typeof slug !== "string" || slug.trim() === "") {
-    throw new Response("Invalid document slug", { status: 400 });
-  }
-  const sanitizedSlug = slug.replace(/[^a-zA-Z0-9-_/]/g, "");
-  if (sanitizedSlug !== slug) {
-    throw new Response("Invalid document slug format", { status: 400 });
-  }
-  if (sanitizedSlug.includes("..") || sanitizedSlug.startsWith("/") || sanitizedSlug.endsWith("/")) {
-    throw new Response("Invalid document slug format", { status: 400 });
-  }
-  const assets = context ? getAssets(context) : undefined;
-  const url = new URL(request.url);
-  const isApiCall = url.searchParams.has("api") || request.headers.get("Accept")?.includes("application/json");
-  const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
-  if (!doc) {
-    throw new Response("Document not found", { status: 404 });
-  }
-  if (isApiCall) {
-    const enhancedFrontmatter = {
-      ...doc.frontmatter,
-      formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : undefined
-    };
-    return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: sanitizedSlug });
-  }
-  return redirect(routesTemplate.docs(sanitizedSlug));
+function createMarkdownSlugLoader() {
+  return async function markdownSlugLoader({ params, request }) {
+    const slug = params["*"];
+    if (!slug || typeof slug !== "string" || slug.trim() === "") {
+      throw new Response("Invalid document slug", { status: 400 });
+    }
+    const sanitizedSlug = slug.replace(/[^a-zA-Z0-9-_/]/g, "");
+    if (sanitizedSlug !== slug) {
+      throw new Response("Invalid document slug format", { status: 400 });
+    }
+    if (sanitizedSlug.includes("..") || sanitizedSlug.startsWith("/") || sanitizedSlug.endsWith("/")) {
+      throw new Response("Invalid document slug format", { status: 400 });
+    }
+    const url = new URL(request.url);
+    const isApiCall = url.searchParams.has("api") || request.headers.get("Accept")?.includes("application/json");
+    const doc = await getMarkdownDocument(sanitizedSlug, request);
+    if (!doc) {
+      throw new Response("Document not found", { status: 404 });
+    }
+    if (isApiCall) {
+      const enhancedFrontmatter = {
+        ...doc.frontmatter,
+        formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : undefined
+      };
+      return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: sanitizedSlug });
+    }
+    return redirect(routesTemplate.docs(sanitizedSlug));
+  };
 }
 export {
   serveCompressedContent,
   routesTemplate,
-  loader2 as markdownSlugLoader,
-  loader as markdownLoader,
   hasMarkdownDocument,
   getMarkdownManifest,
   getMarkdownDocument,
@@ -989,6 +980,8 @@ export {
   getCompressedFilePath,
   getAssetUrl,
   getAssetPath,
+  createMarkdownSlugLoader,
+  createMarkdownLoader,
   clearMarkdownCache,
   MarkdownPage,
   Markdown,
@@ -998,4 +991,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=A7D7FD3D7BED59BF64756E2164756E21
+//# debugId=ADB2F3F5EA8AD76664756E2164756E21
