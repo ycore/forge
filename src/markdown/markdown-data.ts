@@ -18,7 +18,29 @@ async function fetchContent<T>(url: string, assets?: Fetcher): Promise<T> {
   console.log('fetchContent: Starting fetch for URL:', url);
   
   // Use ASSETS binding if available (Cloudflare Worker environment)
-  const fetchFn = assets ? (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init) : fetch;
+  let fetchFn: typeof fetch;
+  if (assets) {
+    fetchFn = (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init);
+    console.log('fetchContent: Using ASSETS binding');
+  } else {
+    // In Cloudflare Workers, convert absolute URLs to relative to avoid self-fetch issues
+    const isAbsoluteUrl = typeof url === 'string' && url.startsWith('http');
+    if (isAbsoluteUrl) {
+      try {
+        const urlObj = new URL(url);
+        const relativePath = urlObj.pathname + urlObj.search;
+        console.log('fetchContent: Converting absolute URL to relative path:', relativePath);
+        fetchFn = (input: RequestInfo | URL, init?: RequestInit) => {
+          const finalInput = input === url ? relativePath : input;
+          return fetch(finalInput, init);
+        };
+      } catch {
+        fetchFn = fetch;
+      }
+    } else {
+      fetchFn = fetch;
+    }
+  }
   
   try {
     if (url.endsWith('.gz')) {
