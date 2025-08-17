@@ -1,6 +1,6 @@
 // src/markdown/plugin/markdown-plugin.ts
 import { existsSync } from "node:fs";
-import { readFile, readdir, writeFile, mkdir, stat, utimes } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
 import path2 from "node:path";
 import { promisify } from "node:util";
 import { gzip } from "node:zlib";
@@ -42,7 +42,7 @@ var HIGHLIGHTER_CONFIG = {
   THEMES: ["night-owl"]
 };
 
-// src/markdown/utils.ts
+// src/markdown/plugin/plugin-utils.ts
 import path from "node:path";
 function getAssetPath(filename) {
   const buildPrefix = ASSET_PREFIX.build.startsWith("/") ? ASSET_PREFIX.build.slice(1) : ASSET_PREFIX.build;
@@ -504,7 +504,8 @@ async function execConcurrently(items, limit, handler) {
   await Promise.allSettled(executing);
 }
 export {
-  markdownBuilder
+  markdownBuilder,
+  getAssetPath
 };
 
-//# debugId=1DFCD837F72CF64764756E2164756E21
+//# debugId=DF30DF0DB85C7F6464756E2164756E21

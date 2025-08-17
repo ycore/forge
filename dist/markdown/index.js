@@ -32,343 +32,10 @@ var HIGHLIGHTER_CONFIG = {
   THEMES: ["night-owl"]
 };
 
-// node:path
-function assertPath(path) {
-  if (typeof path !== "string")
-    throw new TypeError("Path must be a string. Received " + JSON.stringify(path));
-}
-function normalizeStringPosix(path, allowAboveRoot) {
-  var res = "", lastSegmentLength = 0, lastSlash = -1, dots = 0, code;
-  for (var i = 0;i <= path.length; ++i) {
-    if (i < path.length)
-      code = path.charCodeAt(i);
-    else if (code === 47)
-      break;
-    else
-      code = 47;
-    if (code === 47) {
-      if (lastSlash === i - 1 || dots === 1)
-        ;
-      else if (lastSlash !== i - 1 && dots === 2) {
-        if (res.length < 2 || lastSegmentLength !== 2 || res.charCodeAt(res.length - 1) !== 46 || res.charCodeAt(res.length - 2) !== 46) {
-          if (res.length > 2) {
-            var lastSlashIndex = res.lastIndexOf("/");
-            if (lastSlashIndex !== res.length - 1) {
-              if (lastSlashIndex === -1)
-                res = "", lastSegmentLength = 0;
-              else
-                res = res.slice(0, lastSlashIndex), lastSegmentLength = res.length - 1 - res.lastIndexOf("/");
-              lastSlash = i, dots = 0;
-              continue;
-            }
-          } else if (res.length === 2 || res.length === 1) {
-            res = "", lastSegmentLength = 0, lastSlash = i, dots = 0;
-            continue;
-          }
-        }
-        if (allowAboveRoot) {
-          if (res.length > 0)
-            res += "/..";
-          else
-            res = "..";
-          lastSegmentLength = 2;
-        }
-      } else {
-        if (res.length > 0)
-          res += "/" + path.slice(lastSlash + 1, i);
-        else
-          res = path.slice(lastSlash + 1, i);
-        lastSegmentLength = i - lastSlash - 1;
-      }
-      lastSlash = i, dots = 0;
-    } else if (code === 46 && dots !== -1)
-      ++dots;
-    else
-      dots = -1;
-  }
-  return res;
-}
-function _format(sep, pathObject) {
-  var dir = pathObject.dir || pathObject.root, base = pathObject.base || (pathObject.name || "") + (pathObject.ext || "");
-  if (!dir)
-    return base;
-  if (dir === pathObject.root)
-    return dir + base;
-  return dir + sep + base;
-}
-function resolve() {
-  var resolvedPath = "", resolvedAbsolute = false, cwd;
-  for (var i = arguments.length - 1;i >= -1 && !resolvedAbsolute; i--) {
-    var path;
-    if (i >= 0)
-      path = arguments[i];
-    else {
-      if (cwd === undefined)
-        cwd = process.cwd();
-      path = cwd;
-    }
-    if (assertPath(path), path.length === 0)
-      continue;
-    resolvedPath = path + "/" + resolvedPath, resolvedAbsolute = path.charCodeAt(0) === 47;
-  }
-  if (resolvedPath = normalizeStringPosix(resolvedPath, !resolvedAbsolute), resolvedAbsolute)
-    if (resolvedPath.length > 0)
-      return "/" + resolvedPath;
-    else
-      return "/";
-  else if (resolvedPath.length > 0)
-    return resolvedPath;
-  else
-    return ".";
-}
-function normalize(path) {
-  if (assertPath(path), path.length === 0)
-    return ".";
-  var isAbsolute = path.charCodeAt(0) === 47, trailingSeparator = path.charCodeAt(path.length - 1) === 47;
-  if (path = normalizeStringPosix(path, !isAbsolute), path.length === 0 && !isAbsolute)
-    path = ".";
-  if (path.length > 0 && trailingSeparator)
-    path += "/";
-  if (isAbsolute)
-    return "/" + path;
-  return path;
-}
-function isAbsolute(path) {
-  return assertPath(path), path.length > 0 && path.charCodeAt(0) === 47;
-}
-function join() {
-  if (arguments.length === 0)
-    return ".";
-  var joined;
-  for (var i = 0;i < arguments.length; ++i) {
-    var arg = arguments[i];
-    if (assertPath(arg), arg.length > 0)
-      if (joined === undefined)
-        joined = arg;
-      else
-        joined += "/" + arg;
-  }
-  if (joined === undefined)
-    return ".";
-  return normalize(joined);
-}
-function relative(from, to) {
-  if (assertPath(from), assertPath(to), from === to)
-    return "";
-  if (from = resolve(from), to = resolve(to), from === to)
-    return "";
-  var fromStart = 1;
-  for (;fromStart < from.length; ++fromStart)
-    if (from.charCodeAt(fromStart) !== 47)
-      break;
-  var fromEnd = from.length, fromLen = fromEnd - fromStart, toStart = 1;
-  for (;toStart < to.length; ++toStart)
-    if (to.charCodeAt(toStart) !== 47)
-      break;
-  var toEnd = to.length, toLen = toEnd - toStart, length = fromLen < toLen ? fromLen : toLen, lastCommonSep = -1, i = 0;
-  for (;i <= length; ++i) {
-    if (i === length) {
-      if (toLen > length) {
-        if (to.charCodeAt(toStart + i) === 47)
-          return to.slice(toStart + i + 1);
-        else if (i === 0)
-          return to.slice(toStart + i);
-      } else if (fromLen > length) {
-        if (from.charCodeAt(fromStart + i) === 47)
-          lastCommonSep = i;
-        else if (i === 0)
-          lastCommonSep = 0;
-      }
-      break;
-    }
-    var fromCode = from.charCodeAt(fromStart + i), toCode = to.charCodeAt(toStart + i);
-    if (fromCode !== toCode)
-      break;
-    else if (fromCode === 47)
-      lastCommonSep = i;
-  }
-  var out = "";
-  for (i = fromStart + lastCommonSep + 1;i <= fromEnd; ++i)
-    if (i === fromEnd || from.charCodeAt(i) === 47)
-      if (out.length === 0)
-        out += "..";
-      else
-        out += "/..";
-  if (out.length > 0)
-    return out + to.slice(toStart + lastCommonSep);
-  else {
-    if (toStart += lastCommonSep, to.charCodeAt(toStart) === 47)
-      ++toStart;
-    return to.slice(toStart);
-  }
-}
-function _makeLong(path) {
-  return path;
-}
-function dirname(path) {
-  if (assertPath(path), path.length === 0)
-    return ".";
-  var code = path.charCodeAt(0), hasRoot = code === 47, end = -1, matchedSlash = true;
-  for (var i = path.length - 1;i >= 1; --i)
-    if (code = path.charCodeAt(i), code === 47) {
-      if (!matchedSlash) {
-        end = i;
-        break;
-      }
-    } else
-      matchedSlash = false;
-  if (end === -1)
-    return hasRoot ? "/" : ".";
-  if (hasRoot && end === 1)
-    return "//";
-  return path.slice(0, end);
-}
-function basename(path, ext) {
-  if (ext !== undefined && typeof ext !== "string")
-    throw new TypeError('"ext" argument must be a string');
-  assertPath(path);
-  var start = 0, end = -1, matchedSlash = true, i;
-  if (ext !== undefined && ext.length > 0 && ext.length <= path.length) {
-    if (ext.length === path.length && ext === path)
-      return "";
-    var extIdx = ext.length - 1, firstNonSlashEnd = -1;
-    for (i = path.length - 1;i >= 0; --i) {
-      var code = path.charCodeAt(i);
-      if (code === 47) {
-        if (!matchedSlash) {
-          start = i + 1;
-          break;
-        }
-      } else {
-        if (firstNonSlashEnd === -1)
-          matchedSlash = false, firstNonSlashEnd = i + 1;
-        if (extIdx >= 0)
-          if (code === ext.charCodeAt(extIdx)) {
-            if (--extIdx === -1)
-              end = i;
-          } else
-            extIdx = -1, end = firstNonSlashEnd;
-      }
-    }
-    if (start === end)
-      end = firstNonSlashEnd;
-    else if (end === -1)
-      end = path.length;
-    return path.slice(start, end);
-  } else {
-    for (i = path.length - 1;i >= 0; --i)
-      if (path.charCodeAt(i) === 47) {
-        if (!matchedSlash) {
-          start = i + 1;
-          break;
-        }
-      } else if (end === -1)
-        matchedSlash = false, end = i + 1;
-    if (end === -1)
-      return "";
-    return path.slice(start, end);
-  }
-}
-function extname(path) {
-  assertPath(path);
-  var startDot = -1, startPart = 0, end = -1, matchedSlash = true, preDotState = 0;
-  for (var i = path.length - 1;i >= 0; --i) {
-    var code = path.charCodeAt(i);
-    if (code === 47) {
-      if (!matchedSlash) {
-        startPart = i + 1;
-        break;
-      }
-      continue;
-    }
-    if (end === -1)
-      matchedSlash = false, end = i + 1;
-    if (code === 46) {
-      if (startDot === -1)
-        startDot = i;
-      else if (preDotState !== 1)
-        preDotState = 1;
-    } else if (startDot !== -1)
-      preDotState = -1;
-  }
-  if (startDot === -1 || end === -1 || preDotState === 0 || preDotState === 1 && startDot === end - 1 && startDot === startPart + 1)
-    return "";
-  return path.slice(startDot, end);
-}
-function format(pathObject) {
-  if (pathObject === null || typeof pathObject !== "object")
-    throw new TypeError('The "pathObject" argument must be of type Object. Received type ' + typeof pathObject);
-  return _format("/", pathObject);
-}
-function parse(path) {
-  assertPath(path);
-  var ret = { root: "", dir: "", base: "", ext: "", name: "" };
-  if (path.length === 0)
-    return ret;
-  var code = path.charCodeAt(0), isAbsolute2 = code === 47, start;
-  if (isAbsolute2)
-    ret.root = "/", start = 1;
-  else
-    start = 0;
-  var startDot = -1, startPart = 0, end = -1, matchedSlash = true, i = path.length - 1, preDotState = 0;
-  for (;i >= start; --i) {
-    if (code = path.charCodeAt(i), code === 47) {
-      if (!matchedSlash) {
-        startPart = i + 1;
-        break;
-      }
-      continue;
-    }
-    if (end === -1)
-      matchedSlash = false, end = i + 1;
-    if (code === 46) {
-      if (startDot === -1)
-        startDot = i;
-      else if (preDotState !== 1)
-        preDotState = 1;
-    } else if (startDot !== -1)
-      preDotState = -1;
-  }
-  if (startDot === -1 || end === -1 || preDotState === 0 || preDotState === 1 && startDot === end - 1 && startDot === startPart + 1) {
-    if (end !== -1)
-      if (startPart === 0 && isAbsolute2)
-        ret.base = ret.name = path.slice(1, end);
-      else
-        ret.base = ret.name = path.slice(startPart, end);
-  } else {
-    if (startPart === 0 && isAbsolute2)
-      ret.name = path.slice(1, startDot), ret.base = path.slice(1, end);
-    else
-      ret.name = path.slice(startPart, startDot), ret.base = path.slice(startPart, end);
-    ret.ext = path.slice(startDot, end);
-  }
-  if (startPart > 0)
-    ret.dir = path.slice(0, startPart - 1);
-  else if (isAbsolute2)
-    ret.dir = "/";
-  return ret;
-}
-var sep = "/";
-var delimiter = ":";
-var posix = ((p) => (p.posix = p, p))({ resolve, normalize, isAbsolute, join, relative, _makeLong, dirname, basename, extname, format, parse, sep, delimiter, win32: null, posix: null });
-var path_default = posix;
-
 // src/markdown/utils.ts
-function getAssetPath(filename) {
-  const buildPrefix = ASSET_PREFIX.build.startsWith("/") ? ASSET_PREFIX.build.slice(1) : ASSET_PREFIX.build;
-  return path_default.join(process.cwd(), "public", buildPrefix, filename);
-}
-function shouldUseCompression(filename) {
-  if (!MARKDOWN_CONFIG.COMPRESS)
-    return false;
-  const isContentFile = filename.includes("content") && !filename.includes("manifest");
-  return isContentFile;
-}
-function getAssetUrl(filename, request, forceCompressed) {
+function getAssetUrl(filename, request) {
   const fetchPrefix = ASSET_PREFIX.fetch.endsWith("/") ? ASSET_PREFIX.fetch.slice(0, -1) : ASSET_PREFIX.fetch;
-  const shouldCompress = forceCompressed || shouldUseCompression(filename);
-  const finalFilename = shouldCompress ? `${filename}.gz` : filename;
-  const url = `${fetchPrefix}/${finalFilename}`;
+  const url = `${fetchPrefix}/${filename}`;
   return request ? new URL(url, request.url).href : url;
 }
 function getCompressedFilePath(basePath, compression) {
@@ -379,30 +46,6 @@ function getCompressedFilePath(basePath, compression) {
 }
 
 // src/markdown/markdown-compression.ts
-async function decompressGzip(compressedData) {
-  try {
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new Uint8Array(compressedData));
-        controller.close();
-      }
-    });
-    const decompressedStream = stream.pipeThrough(new DecompressionStream("gzip"));
-    const response = new Response(decompressedStream);
-    return await response.text();
-  } catch (error) {
-    throw new Error(`Gzip decompression failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
-async function fetchDecompressed(url, assets) {
-  const fetchFn = assets ? (input, init) => assets.fetch(input, init) : fetch;
-  const response = await fetchFn(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  return await decompressGzip(arrayBuffer);
-}
 function getCompressionHeaders(isCompressed, options = {}) {
   const { maxAge = MARKDOWN_CONFIG.CACHE.MAX_AGE } = options;
   const headers = {
@@ -444,91 +87,56 @@ var manifestCache = null;
 var globalManifestCache = null;
 var contentCache = null;
 var folderContentCache = new Map;
-async function fetchContent(url, assets, request) {
-  console.log("fetchContent 02: Starting fetch for URL:", url);
-  let fetchFn;
-  if (assets) {
-    fetchFn = (input, init) => assets.fetch(input, init);
-    console.log("fetchContent 02: Using ASSETS binding");
-  } else {
-    const isAbsoluteUrl = typeof url === "string" && url.startsWith("http");
-    console.log("fetchContent 02: 1st isAbsoluteUrl", isAbsoluteUrl);
-    if (isAbsoluteUrl && request) {
-      try {
-        const urlObj = new URL(url);
-        const requestObj = new URL(request.url);
-        console.log("fetchContent 02: Checking URL", request.url);
-        if (urlObj.origin === requestObj.origin) {
-          const pathOnly = urlObj.pathname + urlObj.search;
-          console.log("fetchContent 02: Using pathname only for same-origin fetch:", pathOnly);
-          fetchFn = (input, init) => {
-            const finalInput = input === url ? pathOnly : input;
-            return fetch(finalInput, init);
-          };
-        } else {
-          fetchFn = fetch;
-          console.log("fetchContent 02: Using 1st fetchFn = fetch");
-        }
-      } catch {
-        console.log("fetchContent 02: Using 2nd fetchFn = fetch");
-        fetchFn = fetch;
-      }
-    } else {
-      console.log("fetchContent 02: Using 3rd fetchFn = fetch");
-      fetchFn = fetch;
-    }
-    console.log("fetchContent 02: 2nd isAbsoluteUrl", isAbsoluteUrl);
-  }
+async function fetchContent(url, assets) {
+  console.log("fetchContent: Starting fetch for URL:", url);
+  const fetchFn = (input, init) => assets.fetch(input, init);
+  const baseUrl = url.endsWith(".gz") ? url.replace(".gz", "") : url;
+  const gzUrl = baseUrl + ".gz";
   try {
-    if (url.endsWith(".gz")) {
-      console.log("fetchContent 02: Detected compressed file, attempting decompression");
-      try {
-        const decompressedText = await fetchDecompressed(url, assets);
-        console.log("fetchContent 02: Successfully decompressed, text length:", decompressedText.length);
-        const parsed = JSON.parse(decompressedText);
-        console.log("fetchContent 02: Successfully parsed JSON from compressed file");
-        return parsed;
-      } catch (compressionError) {
-        console.warn(`fetchContent 02: Failed to fetch compressed version ${url}:`, compressionError);
-        const fallbackUrl = url.replace(".gz", "");
-        console.warn(`fetchContent 02: Trying fallback ${fallbackUrl}`);
-        try {
-          const response = await fetchFn(fallbackUrl);
-          if (!response.ok) {
-            throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
-          }
-          const parsed = await response.json();
-          console.log("fetchContent 02: Successfully fetched and parsed fallback uncompressed file");
-          return parsed;
-        } catch (fallbackError) {
-          console.error("fetchContent 02: Fallback also failed:", fallbackError);
-          throw compressionError;
+    console.log("fetchContent: Attempting compressed fetch:", gzUrl);
+    const gzResponse = await fetchFn(gzUrl);
+    if (gzResponse.ok) {
+      console.log("fetchContent: Compressed file found, attempting decompression");
+      const compressedData = await gzResponse.arrayBuffer();
+      const decompressedStream = new DecompressionStream("gzip");
+      const decompressedResponse = new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(compressedData));
+          controller.close();
         }
-      }
-    } else {
-      console.log("fetchContent 02: Fetching uncompressed file");
-      const response = await fetchFn(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const parsed = await response.json();
-      console.log("fetchContent 02: Successfully fetched and parsed uncompressed file");
+      }).pipeThrough(decompressedStream));
+      const decompressedText = await decompressedResponse.text();
+      const parsed = JSON.parse(decompressedText);
+      console.log("fetchContent: Successfully decompressed and parsed JSON");
       return parsed;
     }
-  } catch (error) {
-    const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : "Unknown error"}`;
-    console.error("fetchContent 02: Final error:", errorMsg);
+    console.log(`fetchContent: Compressed file not found (${gzResponse.status}), trying uncompressed`);
+  } catch (compressionError) {
+    console.warn("fetchContent: Compression attempt failed:", compressionError);
+  }
+  try {
+    console.log("fetchContent: Attempting uncompressed fetch:", baseUrl);
+    const response = await fetchFn(baseUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const parsed = await response.json();
+    console.log("fetchContent: Successfully fetched and parsed uncompressed file");
+    return parsed;
+  } catch (uncompressedError) {
+    const errorMsg = `Failed to fetch both compressed (${gzUrl}) and uncompressed (${baseUrl}) versions: ${uncompressedError instanceof Error ? uncompressedError.message : "Unknown error"}`;
+    console.error("fetchContent: Final error:", errorMsg);
     throw new Error(errorMsg);
   }
 }
-async function getGlobalManifest(request, assets) {
+async function getGlobalManifest(assets, request) {
   if (globalManifestCache) {
     return globalManifestCache;
   }
   try {
     const manifestUrl = getAssetUrl("markdown-manifest.json", request);
     console.log("Fetching global manifest from URL:", manifestUrl);
-    const globalManifest = await fetchContent(manifestUrl, assets, request);
+    const globalManifest = await fetchContent(manifestUrl, assets);
     console.log("Successfully loaded global manifest with", globalManifest.documents.length, "documents");
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -537,17 +145,17 @@ async function getGlobalManifest(request, assets) {
     return { documents: [], _buildMode: "single" };
   }
 }
-async function getMarkdownManifest(request, assets) {
+async function getMarkdownManifest(assets, request) {
   if (manifestCache) {
     return manifestCache;
   }
-  const globalManifest = await getGlobalManifest(request, assets);
+  const globalManifest = await getGlobalManifest(assets, request);
   const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
   manifestCache = cleanManifest;
   return cleanManifest;
 }
-async function getMarkdownContent(request, assets) {
-  const globalManifest = await getGlobalManifest(request, assets);
+async function getMarkdownContent(assets, request) {
+  const globalManifest = await getGlobalManifest(assets, request);
   if (globalManifest._buildMode === "chunked") {
     return {};
   }
@@ -556,14 +164,14 @@ async function getMarkdownContent(request, assets) {
   }
   try {
     const contentUrl = getAssetUrl("markdown-content.json", request);
-    const content = await fetchContent(contentUrl, assets, request);
+    const content = await fetchContent(contentUrl, assets);
     contentCache = content;
     return content;
   } catch (_error) {
     return {};
   }
 }
-async function loadFolderContent(folder, request, assets) {
+async function loadFolderContent(folder, assets, request) {
   console.log("loadFolderContent: Loading content for folder:", folder);
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
@@ -576,7 +184,7 @@ async function loadFolderContent(folder, request, assets) {
     const folderKey = folder.replace(/[/\\]/g, "-");
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
     console.log("loadFolderContent: Generated content URL:", contentUrl, "for folder:", folder);
-    const content = await fetchContent(contentUrl, assets, request);
+    const content = await fetchContent(contentUrl, assets);
     console.log("loadFolderContent: Successfully loaded content with", Object.keys(content).length, "documents for folder:", folder);
     folderContentCache.set(folder, content);
     return content;
@@ -585,18 +193,18 @@ async function loadFolderContent(folder, request, assets) {
     return {};
   }
 }
-async function getMarkdownDocument(slug, request, assets) {
-  const globalManifest = await getGlobalManifest(request, assets);
+async function getMarkdownDocument(slug, assets, request) {
+  const globalManifest = await getGlobalManifest(assets, request);
   if (globalManifest._buildMode === "chunked") {
-    const manifest = await getMarkdownManifest(request, assets);
+    const manifest = await getMarkdownManifest(assets, request);
     const docMeta = manifest.find((doc) => doc.slug === slug);
     if (!docMeta || !docMeta.folder) {
       return null;
     }
-    const folderContent = await loadFolderContent(docMeta.folder, request, assets);
+    const folderContent = await loadFolderContent(docMeta.folder, assets, request);
     return folderContent[slug] || null;
   }
-  const content = await getMarkdownContent(request, assets);
+  const content = await getMarkdownContent(assets, request);
   return content[slug] || null;
 }
 function clearMarkdownCache() {
@@ -605,13 +213,13 @@ function clearMarkdownCache() {
   contentCache = null;
   folderContentCache.clear();
 }
-async function hasMarkdownDocument(slug, request, assets) {
-  const globalManifest = await getGlobalManifest(request, assets);
+async function hasMarkdownDocument(slug, assets, request) {
+  const globalManifest = await getGlobalManifest(assets, request);
   if (globalManifest._buildMode === "chunked") {
-    const manifest = await getMarkdownManifest(request, assets);
+    const manifest = await getMarkdownManifest(assets, request);
     return manifest.some((doc) => doc.slug === slug);
   }
-  const content = await getMarkdownContent(request, assets);
+  const content = await getMarkdownContent(assets, request);
   return slug in content;
 }
 // src/markdown/markdown-loader.tsx
@@ -634,50 +242,14 @@ import { Link } from "@ycore/componentry/shadcn-ui";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useFetcher, useLocation } from "react-router";
-
-// src/adapters/cloudflare/context.server.ts
-import { unstable_createContext } from "react-router";
-var CloudflareContext = unstable_createContext();
-
-// src/markdown/routes/markdown.tsx
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var isDocContent = (data) => {
   return typeof data === "object" && data !== null && "content" in data && "frontmatter" in data && "slug" in data;
 };
-var routesTemplate = {
+var ROUTES_TEMPLATE = {
   docs: (slug) => `/docs#${slug}`,
   docsApi: (slug) => `/docs/${slug}?api`
 };
-function createMarkdownLoader() {
-  return async function markdownLoader({ request, context }) {
-    try {
-      console.log("markdownLoader: Starting manifest fetch for request URL:", request.url);
-      let assets;
-      if (context) {
-        try {
-          const { env } = context.get(CloudflareContext);
-          if (env.ASSETS) {
-            assets = env.ASSETS;
-            console.log("markdownLoader: Using ASSETS binding for internal fetch");
-          } else {
-            console.log("markdownLoader: ASSETS binding is undefined, using fetch");
-          }
-        } catch (error) {
-          console.log("markdownLoader: Failed to get context:", error);
-        }
-      } else {
-        console.log("markdownLoader: No context provided, using fetch");
-      }
-      const manifest = await getMarkdownManifest(request, assets);
-      console.log("markdownLoader: Successfully loaded manifest with", manifest.length, "documents");
-      return manifest;
-    } catch (error) {
-      console.error("markdownLoader: Failed to load manifest:", error);
-      console.error("markdownLoader: Request URL was:", request.url);
-      return [];
-    }
-  };
-}
 function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
   const docs = loaderData;
   const location = useLocation();
@@ -692,14 +264,14 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
       return;
     setSelectedDoc(slug);
     setError(null);
-    fetcher.load(routesTemplate.docsApi(slug));
-    window.history.replaceState(null, "", routesTemplate.docs(slug));
+    fetcher.load(ROUTES_TEMPLATE.docsApi(slug));
+    window.history.replaceState(null, "", ROUTES_TEMPLATE.docs(slug));
   }, [fetcher.load, selectedDoc]);
   useEffect(() => {
     const hash = location.hash.slice(1);
     if (hash && docs.find((doc) => doc.slug === hash) && !selectedDoc) {
       setSelectedDoc(hash);
-      fetcher.load(routesTemplate.docsApi(hash));
+      fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
     }
   }, [docs, fetcher.load, selectedDoc, location.hash.slice]);
   useEffect(() => {
@@ -708,7 +280,7 @@ function MarkdownPage({ loaderData, spriteUrl, themeContext }) {
       if (hash && docs.find((doc) => doc.slug === hash)) {
         setSelectedDoc(hash);
         setError(null);
-        fetcher.load(routesTemplate.docsApi(hash));
+        fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
       } else {
         setSelectedDoc(null);
         setError(null);
@@ -1000,49 +572,8 @@ var DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }) => {
     })
   });
 });
-// src/markdown/routes/markdown.$slug.tsx
-import { redirect } from "react-router";
-function createMarkdownSlugLoader() {
-  return async function markdownSlugLoader({ params, request, context }) {
-    const slug = params["*"];
-    if (!slug || typeof slug !== "string" || slug.trim() === "") {
-      throw new Response("Invalid document slug", { status: 400 });
-    }
-    const sanitizedSlug = slug.replace(/[^a-zA-Z0-9-_/]/g, "");
-    if (sanitizedSlug !== slug) {
-      throw new Response("Invalid document slug format", { status: 400 });
-    }
-    if (sanitizedSlug.includes("..") || sanitizedSlug.startsWith("/") || sanitizedSlug.endsWith("/")) {
-      throw new Response("Invalid document slug format", { status: 400 });
-    }
-    let assets;
-    if (context) {
-      try {
-        const { env } = context.get(CloudflareContext);
-        if (env.ASSETS) {
-          assets = env.ASSETS;
-        }
-      } catch {}
-    }
-    const url = new URL(request.url);
-    const isApiCall = url.searchParams.has("api") || request.headers.get("Accept")?.includes("application/json");
-    const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
-    if (!doc) {
-      throw new Response("Document not found", { status: 404 });
-    }
-    if (isApiCall) {
-      const enhancedFrontmatter = {
-        ...doc.frontmatter,
-        formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : undefined
-      };
-      return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: sanitizedSlug });
-    }
-    return redirect(routesTemplate.docs(sanitizedSlug));
-  };
-}
 export {
   serveCompressedContent,
-  routesTemplate,
   hasMarkdownDocument,
   getMarkdownManifest,
   getMarkdownDocument,
@@ -1050,10 +581,8 @@ export {
   getCompressionHeaders,
   getCompressedFilePath,
   getAssetUrl,
-  getAssetPath,
-  createMarkdownSlugLoader,
-  createMarkdownLoader,
   clearMarkdownCache,
+  ROUTES_TEMPLATE,
   MarkdownPage,
   Markdown,
   MARKDOWN_CONFIG,
@@ -1062,4 +591,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=4C4822B427FEEF0F64756E2164756E21
+//# debugId=154A7D96C3D3573E64756E2164756E21
