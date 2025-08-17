@@ -3,6 +3,5 @@ export { getCompressionHeaders, serveCompressedContent } from './markdown-compre
 export { ASSET_PREFIX, DOMPURIFY_CONFIG, HIGHLIGHTER_CONFIG, MARKDOWN_CONFIG } from './markdown-config';
 export { clearMarkdownCache, getMarkdownContent, getMarkdownDocument, getMarkdownManifest, hasMarkdownDocument } from './markdown-data';
 export { Markdown } from './markdown-loader';
-export { createMarkdownLoader, default as MarkdownPage, routesTemplate } from './routes/markdown';
-export { createMarkdownSlugLoader } from './routes/markdown.$slug';
-export { getAssetPath, getAssetUrl, getCompressedFilePath } from './utils';
+export { MarkdownPage, ROUTES_TEMPLATE } from './routes/markdown';
+export { getAssetUrl, getCompressedFilePath } from './utils';

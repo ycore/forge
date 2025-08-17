@@ -1,6 +1,6 @@
 // src/adapters/cloudflare/context.server.ts
 import { unstable_createContext } from "react-router";
-var CloudflareContext = unstable_createContext();
+var CloudflareContext = unstable_createContext({});
 function getBindings(context) {
   return context.get(CloudflareContext).env;
 }
@@ -21,4 +21,4 @@ export {
   CloudflareContext
 };
 
-//# debugId=ACAF4975FD92340D64756E2164756E21
+//# debugId=E56EC41BB5CFC12A64756E2164756E21

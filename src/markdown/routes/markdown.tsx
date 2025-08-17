@@ -6,9 +6,7 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownLoaderArgs, MarkdownPageProps } from '../../@types/markdown.types';
-import { CloudflareContext } from '../../adapters/cloudflare/context.server';
-import { getMarkdownManifest } from '../markdown-data';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps } from '../../@types/markdown.types';
 import { Markdown } from '../markdown-loader';
 
 // Type guard
@@ -16,48 +14,14 @@ const isDocContent = (data: unknown): data is DocContent => {
   return typeof data === 'object' && data !== null && 'content' in data && 'frontmatter' in data && 'slug' in data;
 };
 
-export const routesTemplate = {
+export const ROUTES_TEMPLATE = {
   docs: (slug: string) => `/docs#${slug}`,
   docsApi: (slug: string) => `/docs/${slug}?api`,
 };
 
-// Enhanced loader for Cloudflare Worker environments
-export function createMarkdownLoader() {
-  return async function markdownLoader({ request, context }: MarkdownLoaderArgs): Promise<EnhancedMarkdownMeta[]> {
-    try {
-      console.log('markdownLoader: Starting manifest fetch for request URL:', request.url);
+// Client-side React component for displaying markdown documentation
 
-      // Get ASSETS binding from Cloudflare context for internal fetching
-      let assets: Fetcher | undefined;
-      if (context) {
-        try {
-          const { env } = context.get(CloudflareContext);
-          if (env.ASSETS) {
-            assets = env.ASSETS;
-            console.log('markdownLoader: Using ASSETS binding for internal fetch');
-          } else {
-            console.log('markdownLoader: ASSETS binding is undefined, using fetch');
-          }
-        } catch (error) {
-          console.log('markdownLoader: Failed to get context:', error);
-        }
-      } else {
-        console.log('markdownLoader: No context provided, using fetch');
-      }
-
-      const manifest = await getMarkdownManifest(request, assets);
-      console.log('markdownLoader: Successfully loaded manifest with', manifest.length, 'documents');
-      return manifest as EnhancedMarkdownMeta[];
-    } catch (error) {
-      console.error('markdownLoader: Failed to load manifest:', error);
-      console.error('markdownLoader: Request URL was:', request.url);
-      // Return empty array so the UI can show "No documentation found" instead of crashing
-      return [];
-    }
-  };
-}
-
-export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
+export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
   const docs = loaderData;
   const location = useLocation();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
@@ -73,8 +37,8 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Ma
       if (selectedDoc === slug) return;
       setSelectedDoc(slug);
       setError(null);
-      fetcher.load(routesTemplate.docsApi(slug));
-      window.history.replaceState(null, '', routesTemplate.docs(slug));
+      fetcher.load(ROUTES_TEMPLATE.docsApi(slug));
+      window.history.replaceState(null, '', ROUTES_TEMPLATE.docs(slug));
     },
     [fetcher.load, selectedDoc]
   );
@@ -84,7 +48,7 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Ma
     const hash = location.hash.slice(1);
     if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash) && !selectedDoc) {
       setSelectedDoc(hash);
-      fetcher.load(routesTemplate.docsApi(hash));
+      fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
     }
   }, [docs, fetcher.load, selectedDoc, location.hash.slice]);
 
@@ -95,7 +59,7 @@ export default function MarkdownPage({ loaderData, spriteUrl, themeContext }: Ma
       if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash)) {
         setSelectedDoc(hash);
         setError(null);
-        fetcher.load(routesTemplate.docsApi(hash));
+        fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
       } else {
         setSelectedDoc(null);
         setError(null);

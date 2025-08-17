@@ -18,6 +18,11 @@
       "types": "./dist/markdown/index.d.ts",
       "default": "./src/markdown/index.ts"
     },
+    "./markdown/server": {
+      "import": "./dist/markdown/server/index.js",
+      "types": "./dist/markdown/server/index.d.ts",
+      "default": "./src/markdown/server/index.ts"
+    },
     "./markdown/plugin": {
       "node": {
         "import": "./dist/markdown/plugin/index.js",

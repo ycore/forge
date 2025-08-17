@@ -1,5 +1,4 @@
 import type { GlobalManifest, MarkdownContent, MarkdownMeta } from '../@types/markdown.types';
-import { fetchDecompressed } from './markdown-compression';
 import { getAssetUrl } from './utils';
 
 // Cache for loaded data to avoid multiple file reads
@@ -9,97 +8,68 @@ let contentCache: Record<string, MarkdownContent> | null = null;
 const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map();
 
 /**
- * Fetch JSON content with optional decompression support and fallback
- * @param url - The URL to fetch from
- * @param assets - Optional Cloudflare ASSETS binding for static asset serving
+ * Fetch JSON content with smart compression fallback
+ * @param url - The URL to fetch from (should be the base .json URL)
+ * @param assets - Cloudflare ASSETS binding for static asset serving
  * @returns Parsed JSON content
  */
-async function fetchContent<T>(url: string, assets?: Fetcher, request?: Request): Promise<T> {
-  console.log('fetchContent 02: Starting fetch for URL:', url);
+async function fetchContent<T>(url: string, assets: Fetcher): Promise<T> {
+  console.log('fetchContent: Starting fetch for URL:', url);
 
-  // Use ASSETS binding if available (Cloudflare Worker environment)
-  let fetchFn: typeof fetch;
-  if (assets) {
-    fetchFn = (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init);
-    console.log('fetchContent 02: Using ASSETS binding');
-  } else {
-    // In Cloudflare Workers, use pathname only to avoid self-fetch issues
-    const isAbsoluteUrl = typeof url === 'string' && url.startsWith('http');
-    console.log('fetchContent 02: 1st isAbsoluteUrl', isAbsoluteUrl);
+  // Use ASSETS binding for internal asset fetching
+  const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init);
 
-    if (isAbsoluteUrl && request) {
-      try {
-        const urlObj = new URL(url);
-        const requestObj = new URL(request.url);
-        // Only convert if it's the same origin to avoid breaking external URLs
-        console.log('fetchContent 02: Checking URL', request.url);
-        if (urlObj.origin === requestObj.origin) {
-          const pathOnly = urlObj.pathname + urlObj.search;
-          console.log('fetchContent 02: Using pathname only for same-origin fetch:', pathOnly);
-          fetchFn = (input: RequestInfo | URL, init?: RequestInit) => {
-            const finalInput = input === url ? pathOnly : input;
-            return fetch(finalInput, init);
-          };
-        } else {
-          fetchFn = fetch;
-          console.log('fetchContent 02: Using 1st fetchFn = fetch');
-        }
-      } catch {
-        console.log('fetchContent 02: Using 2nd fetchFn = fetch');
-        fetchFn = fetch;
-      }
-    } else {
-      console.log('fetchContent 02: Using 3rd fetchFn = fetch');
-      fetchFn = fetch;
-    }
-    console.log('fetchContent 02: 2nd isAbsoluteUrl', isAbsoluteUrl);
-  }
+  // Determine URLs for both compressed and uncompressed versions
+  const baseUrl = url.endsWith('.gz') ? url.replace('.gz', '') : url;
+  const gzUrl = baseUrl + '.gz';
 
+  // Try compressed version first
   try {
-    if (url.endsWith('.gz')) {
-      console.log('fetchContent 02: Detected compressed file, attempting decompression');
-      // Try compressed version first
-      try {
-        const decompressedText = await fetchDecompressed(url, assets);
-        console.log('fetchContent 02: Successfully decompressed, text length:', decompressedText.length);
-        const parsed = JSON.parse(decompressedText) as T;
-        console.log('fetchContent 02: Successfully parsed JSON from compressed file');
-        return parsed;
-      } catch (compressionError) {
-        console.warn(`fetchContent 02: Failed to fetch compressed version ${url}:`, compressionError);
+    console.log('fetchContent: Attempting compressed fetch:', gzUrl);
+    const gzResponse = await fetchFn(gzUrl);
 
-        // Fallback to uncompressed version if compressed fails
-        const fallbackUrl = url.replace('.gz', '');
-        console.warn(`fetchContent 02: Trying fallback ${fallbackUrl}`);
+    if (gzResponse.ok) {
+      console.log('fetchContent: Compressed file found, attempting decompression');
 
-        try {
-          const response = await fetchFn(fallbackUrl);
-          if (!response.ok) {
-            throw new Error(`Fallback HTTP ${response.status}: ${response.statusText}`);
+      // Decompress using Web Streams API
+      const compressedData = await gzResponse.arrayBuffer();
+      const decompressedStream = new DecompressionStream('gzip');
+      const decompressedResponse = new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array(compressedData));
+            controller.close();
           }
-          const parsed = (await response.json()) as T;
-          console.log('fetchContent 02: Successfully fetched and parsed fallback uncompressed file');
-          return parsed;
-        } catch (fallbackError) {
-          console.error('fetchContent 02: Fallback also failed:', fallbackError);
-          // If both compressed and uncompressed fail, throw the original compression error
-          throw compressionError;
-        }
-      }
-    } else {
-      console.log('fetchContent 02: Fetching uncompressed file');
-      // Standard fetch for uncompressed files
-      const response = await fetchFn(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const parsed = (await response.json()) as T;
-      console.log('fetchContent 02: Successfully fetched and parsed uncompressed file');
+        }).pipeThrough(decompressedStream)
+      );
+
+      const decompressedText = await decompressedResponse.text();
+      const parsed = JSON.parse(decompressedText) as T;
+      console.log('fetchContent: Successfully decompressed and parsed JSON');
       return parsed;
     }
-  } catch (error) {
-    const errorMsg = `Failed to fetch and parse JSON from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    console.error('fetchContent 02: Final error:', errorMsg);
+
+    console.log(`fetchContent: Compressed file not found (${gzResponse.status}), trying uncompressed`);
+
+  } catch (compressionError) {
+    console.warn('fetchContent: Compression attempt failed:', compressionError);
+  }
+
+  // Fallback to uncompressed version
+  try {
+    console.log('fetchContent: Attempting uncompressed fetch:', baseUrl);
+    const response = await fetchFn(baseUrl);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const parsed = (await response.json()) as T;
+    console.log('fetchContent: Successfully fetched and parsed uncompressed file');
+    return parsed;
+  } catch (uncompressedError) {
+    const errorMsg = `Failed to fetch both compressed (${gzUrl}) and uncompressed (${baseUrl}) versions: ${uncompressedError instanceof Error ? uncompressedError.message : 'Unknown error'}`;
+    console.error('fetchContent: Final error:', errorMsg);
     throw new Error(errorMsg);
   }
 }
@@ -107,7 +77,7 @@ async function fetchContent<T>(url: string, assets?: Fetcher, request?: Request)
 /**
  * Get global manifest data which includes documents and chunking info
  */
-async function getGlobalManifest(request?: Request, assets?: Fetcher): Promise<GlobalManifest> {
+async function getGlobalManifest(assets: Fetcher, request?: Request): Promise<GlobalManifest> {
   if (globalManifestCache) {
     return globalManifestCache;
   }
@@ -115,7 +85,7 @@ async function getGlobalManifest(request?: Request, assets?: Fetcher): Promise<G
   try {
     const manifestUrl = getAssetUrl('markdown-manifest.json', request);
     console.log('Fetching global manifest from URL:', manifestUrl);
-    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl, assets, request);
+    const globalManifest = await fetchContent<GlobalManifest>(manifestUrl, assets);
     console.log('Successfully loaded global manifest with', globalManifest.documents.length, 'documents');
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -129,12 +99,12 @@ async function getGlobalManifest(request?: Request, assets?: Fetcher): Promise<G
  * Get markdown manifest data from generated JSON file
  * This reads from the consumer app's generated manifest file
  */
-export async function getMarkdownManifest(request?: Request, assets?: Fetcher): Promise<MarkdownMeta[]> {
+export async function getMarkdownManifest(assets: Fetcher, request?: Request): Promise<MarkdownMeta[]> {
   if (manifestCache) {
     return manifestCache;
   }
 
-  const globalManifest = await getGlobalManifest(request, assets);
+  const globalManifest = await getGlobalManifest(assets, request);
 
   // Filter out build metadata for runtime use
   const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
@@ -147,8 +117,8 @@ export async function getMarkdownManifest(request?: Request, assets?: Fetcher): 
  * Get markdown content data from generated JSON file
  * This reads from the consumer app's generated content file or folder chunks
  */
-export async function getMarkdownContent(request?: Request, assets?: Fetcher): Promise<Record<string, MarkdownContent>> {
-  const globalManifest = await getGlobalManifest(request, assets);
+export async function getMarkdownContent(assets: Fetcher, request?: Request): Promise<Record<string, MarkdownContent>> {
+  const globalManifest = await getGlobalManifest(assets, request);
 
   // In folder chunk mode, we don't preload all content
   if (globalManifest._buildMode === 'chunked') {
@@ -162,7 +132,7 @@ export async function getMarkdownContent(request?: Request, assets?: Fetcher): P
 
   try {
     const contentUrl = getAssetUrl('markdown-content.json', request);
-    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets, request);
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets);
     contentCache = content;
     return content;
   } catch (_error) {
@@ -174,7 +144,7 @@ export async function getMarkdownContent(request?: Request, assets?: Fetcher): P
 /**
  * Load content for a specific folder (lazy loading)
  */
-export async function loadFolderContent(folder: string, request?: Request, assets?: Fetcher): Promise<Record<string, MarkdownContent>> {
+export async function loadFolderContent(folder: string, assets: Fetcher, request?: Request): Promise<Record<string, MarkdownContent>> {
   console.log('loadFolderContent: Loading content for folder:', folder);
 
   // Check cache first
@@ -191,7 +161,7 @@ export async function loadFolderContent(folder: string, request?: Request, asset
     const contentUrl = getAssetUrl(`markdown-content-${folderKey}.json`, request);
     console.log('loadFolderContent: Generated content URL:', contentUrl, 'for folder:', folder);
 
-    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets, request);
+    const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets);
     console.log('loadFolderContent: Successfully loaded content with', Object.keys(content).length, 'documents for folder:', folder);
     folderContentCache.set(folder, content);
     return content;
@@ -204,32 +174,32 @@ export async function loadFolderContent(folder: string, request?: Request, asset
 /**
  * Get all documents for a specific folder
  */
-export async function getFolderDocuments(folder: string, request?: Request, assets?: Fetcher): Promise<MarkdownContent[]> {
-  const content = await loadFolderContent(folder, request, assets);
+export async function getFolderDocuments(folder: string, assets: Fetcher, request?: Request): Promise<MarkdownContent[]> {
+  const content = await loadFolderContent(folder, assets, request);
   return Object.values(content);
 }
 
 /**
  * Get a specific markdown document by slug
  */
-export async function getMarkdownDocument(slug: string, request?: Request, assets?: Fetcher): Promise<MarkdownContent | null> {
-  const globalManifest = await getGlobalManifest(request, assets);
+export async function getMarkdownDocument(slug: string, assets: Fetcher, request?: Request): Promise<MarkdownContent | null> {
+  const globalManifest = await getGlobalManifest(assets, request);
 
   // In folder chunk mode, we need to determine which folder the document is in
   if (globalManifest._buildMode === 'chunked') {
-    const manifest = await getMarkdownManifest(request, assets);
+    const manifest = await getMarkdownManifest(assets, request);
     const docMeta = manifest.find(doc => doc.slug === slug);
 
     if (!docMeta || !docMeta.folder) {
       return null;
     }
 
-    const folderContent = await loadFolderContent(docMeta.folder, request, assets);
+    const folderContent = await loadFolderContent(docMeta.folder, assets, request);
     return folderContent[slug] || null;
   }
 
   // Fallback to traditional mode
-  const content = await getMarkdownContent(request, assets);
+  const content = await getMarkdownContent(assets, request);
   return content[slug] || null;
 }
 
@@ -253,30 +223,30 @@ export function clearFolderCache(folder: string): void {
 /**
  * Preload content for multiple folders
  */
-export async function preloadFolders(folders: string[], request?: Request, assets?: Fetcher): Promise<void> {
-  await Promise.all(folders.map(folder => loadFolderContent(folder, request, assets)));
+export async function preloadFolders(folders: string[], assets: Fetcher, request?: Request): Promise<void> {
+  await Promise.all(folders.map(folder => loadFolderContent(folder, assets, request)));
 }
 
 /**
  * Check if a document exists by slug
  */
-export async function hasMarkdownDocument(slug: string, request?: Request, assets?: Fetcher): Promise<boolean> {
-  const globalManifest = await getGlobalManifest(request, assets);
+export async function hasMarkdownDocument(slug: string, assets: Fetcher, request?: Request): Promise<boolean> {
+  const globalManifest = await getGlobalManifest(assets, request);
 
   if (globalManifest._buildMode === 'chunked') {
-    const manifest = await getMarkdownManifest(request, assets);
+    const manifest = await getMarkdownManifest(assets, request);
     return manifest.some(doc => doc.slug === slug);
   }
 
-  const content = await getMarkdownContent(request, assets);
+  const content = await getMarkdownContent(assets, request);
   return slug in content;
 }
 
 /**
  * Get documents by folder with pagination support
  */
-export async function getFolderDocumentsPaginated(folder: string, offset = 0, limit = 10, request?: Request, assets?: Fetcher): Promise<{ documents: MarkdownMeta[]; total: number; hasMore: boolean }> {
-  const manifest = await getMarkdownManifest(request, assets);
+export async function getFolderDocumentsPaginated(folder: string, offset = 0, limit = 10, assets: Fetcher, request?: Request): Promise<{ documents: MarkdownMeta[]; total: number; hasMore: boolean }> {
+  const manifest = await getMarkdownManifest(assets, request);
   const folderDocs = manifest.filter(doc => doc.folder === folder);
   const total = folderDocs.length;
   const paginatedDocs = folderDocs.slice(offset, offset + limit);
@@ -291,8 +261,8 @@ export async function getFolderDocumentsPaginated(folder: string, offset = 0, li
 /**
  * Get all unique folders from manifest
  */
-export async function getAllFolders(request?: Request, assets?: Fetcher): Promise<string[]> {
-  const manifest = await getMarkdownManifest(request, assets);
+export async function getAllFolders(assets: Fetcher, request?: Request): Promise<string[]> {
+  const manifest = await getMarkdownManifest(assets, request);
   const folders = new Set<string>();
 
   manifest.forEach(doc => {
@@ -307,7 +277,7 @@ export async function getAllFolders(request?: Request, assets?: Fetcher): Promis
 /**
  * Get the current build mode from the manifest
  */
-export async function getBuildMode(request?: Request, assets?: Fetcher): Promise<'single' | 'chunked'> {
-  const globalManifest = await getGlobalManifest(request, assets);
+export async function getBuildMode(assets: Fetcher, request?: Request): Promise<'single' | 'chunked'> {
+  const globalManifest = await getGlobalManifest(assets, request);
   return globalManifest._buildMode;
 }

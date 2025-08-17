@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
 import { existsSync } from 'node:fs';
-import { readFile, readdir, writeFile, mkdir, stat, utimes } from 'node:fs/promises';
+import { mkdir, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { gzip } from 'node:zlib';
@@ -10,7 +10,7 @@ import { createHighlighter } from 'shiki';
 import type { Plugin } from 'vite';
 import type { FileMetadata, FolderContentChunk, Frontmatter, GlobalManifest, MarkdownBuilderOptions, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from '../../@types/markdown.types';
 import { DOMPURIFY_CONFIG, HIGHLIGHTER_CONFIG, MARKDOWN_CONFIG } from '../markdown-config';
-import { getAssetPath } from '../utils';
+import { getAssetPath } from './plugin-utils';
 
 const gzipAsync = promisify(gzip);
 
