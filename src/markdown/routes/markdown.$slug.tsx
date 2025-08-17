@@ -1,10 +1,12 @@
 import { redirect } from 'react-router';
+import type { MarkdownLoaderArgs } from '../../@types/markdown.types';
+import { CloudflareContext } from '../../adapters/cloudflare/context.server';
 import { getMarkdownDocument } from '../markdown-data';
 import { routesTemplate } from './markdown';
 
 // Enhanced loader for Cloudflare Worker environments
 export function createMarkdownSlugLoader() {
-  return async function markdownSlugLoader({ params, request }: { params: Record<string, string | undefined>; request: Request }) {
+  return async function markdownSlugLoader({ params, request, context }: MarkdownLoaderArgs & { params: Record<string, string | undefined> }) {
     const slug = params['*'];
 
     // Validate slug
@@ -23,13 +25,22 @@ export function createMarkdownSlugLoader() {
       throw new Response('Invalid document slug format', { status: 400 });
     }
 
-    // Works in both Cloudflare Worker and development environments
+    // Get ASSETS binding from Cloudflare context for internal fetching
+    let assets: Fetcher | undefined;
+    if (context) {
+      try {
+        const { env } = context.get(CloudflareContext);
+        assets = env.ASSETS;
+      } catch {
+        // Context not available (development mode)
+      }
+    }
 
     const url = new URL(request.url);
     const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
 
     // Check if the document exists
-    const doc = await getMarkdownDocument(sanitizedSlug, request);
+    const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
     if (!doc) {
       throw new Response('Document not found', { status: 404 });
     }

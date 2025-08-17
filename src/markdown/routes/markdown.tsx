@@ -6,7 +6,8 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps } from '../../@types/markdown.types';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownLoaderArgs, MarkdownPageProps } from '../../@types/markdown.types';
+import { CloudflareContext } from '../../adapters/cloudflare/context.server';
 import { getMarkdownManifest } from '../markdown-data';
 import { Markdown } from '../markdown-loader';
 
@@ -22,10 +23,23 @@ export const routesTemplate = {
 
 // Enhanced loader for Cloudflare Worker environments
 export function createMarkdownLoader() {
-  return async function markdownLoader({ request }: { request: Request }): Promise<EnhancedMarkdownMeta[]> {
+  return async function markdownLoader({ request, context }: MarkdownLoaderArgs): Promise<EnhancedMarkdownMeta[]> {
     try {
       console.log('markdownLoader: Starting manifest fetch for request URL:', request.url);
-      const manifest = await getMarkdownManifest(request);
+
+      // Get ASSETS binding from Cloudflare context for internal fetching
+      let assets: Fetcher | undefined;
+      if (context) {
+        try {
+          const { env } = context.get(CloudflareContext);
+          assets = env.ASSETS;
+          console.log('markdownLoader: Using ASSETS binding for internal fetch');
+        } catch {
+          console.log('markdownLoader: ASSETS binding not available, using fetch');
+        }
+      }
+
+      const manifest = await getMarkdownManifest(request, assets);
       console.log('markdownLoader: Successfully loaded manifest with', manifest.length, 'documents');
       return manifest as EnhancedMarkdownMeta[];
     } catch (error) {
