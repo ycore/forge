@@ -446,7 +446,28 @@ var contentCache = null;
 var folderContentCache = new Map;
 async function fetchContent(url, assets) {
   console.log("fetchContent: Starting fetch for URL:", url);
-  const fetchFn = assets ? (input, init) => assets.fetch(input, init) : fetch;
+  let fetchFn;
+  if (assets) {
+    fetchFn = (input, init) => assets.fetch(input, init);
+    console.log("fetchContent: Using ASSETS binding");
+  } else {
+    const isAbsoluteUrl = typeof url === "string" && url.startsWith("http");
+    if (isAbsoluteUrl) {
+      try {
+        const urlObj = new URL(url);
+        const relativePath = urlObj.pathname + urlObj.search;
+        console.log("fetchContent: Converting absolute URL to relative path:", relativePath);
+        fetchFn = (input, init) => {
+          const finalInput = input === url ? relativePath : input;
+          return fetch(finalInput, init);
+        };
+      } catch {
+        fetchFn = fetch;
+      }
+    } else {
+      fetchFn = fetch;
+    }
+  }
   try {
     if (url.endsWith(".gz")) {
       console.log("fetchContent: Detected compressed file, attempting decompression");
@@ -1030,4 +1051,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=F530811C7CEB018064756E2164756E21
+//# debugId=569CD386E42D3D2264756E2164756E21
