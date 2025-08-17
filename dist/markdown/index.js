@@ -602,6 +602,12 @@ import { Link } from "@ycore/componentry/shadcn-ui";
 import clsx from "clsx";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useFetcher, useLocation } from "react-router";
+
+// src/adapters/cloudflare/context.server.ts
+import { unstable_createContext } from "react-router";
+var CloudflareContext = unstable_createContext();
+
+// src/markdown/routes/markdown.tsx
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var isDocContent = (data) => {
   return typeof data === "object" && data !== null && "content" in data && "frontmatter" in data && "slug" in data;
@@ -611,10 +617,20 @@ var routesTemplate = {
   docsApi: (slug) => `/docs/${slug}?api`
 };
 function createMarkdownLoader() {
-  return async function markdownLoader({ request }) {
+  return async function markdownLoader({ request, context }) {
     try {
       console.log("markdownLoader: Starting manifest fetch for request URL:", request.url);
-      const manifest = await getMarkdownManifest(request);
+      let assets;
+      if (context) {
+        try {
+          const { env } = context.get(CloudflareContext);
+          assets = env.ASSETS;
+          console.log("markdownLoader: Using ASSETS binding for internal fetch");
+        } catch {
+          console.log("markdownLoader: ASSETS binding not available, using fetch");
+        }
+      }
+      const manifest = await getMarkdownManifest(request, assets);
       console.log("markdownLoader: Successfully loaded manifest with", manifest.length, "documents");
       return manifest;
     } catch (error) {
@@ -949,7 +965,7 @@ var DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }) => {
 // src/markdown/routes/markdown.$slug.tsx
 import { redirect } from "react-router";
 function createMarkdownSlugLoader() {
-  return async function markdownSlugLoader({ params, request }) {
+  return async function markdownSlugLoader({ params, request, context }) {
     const slug = params["*"];
     if (!slug || typeof slug !== "string" || slug.trim() === "") {
       throw new Response("Invalid document slug", { status: 400 });
@@ -961,9 +977,16 @@ function createMarkdownSlugLoader() {
     if (sanitizedSlug.includes("..") || sanitizedSlug.startsWith("/") || sanitizedSlug.endsWith("/")) {
       throw new Response("Invalid document slug format", { status: 400 });
     }
+    let assets;
+    if (context) {
+      try {
+        const { env } = context.get(CloudflareContext);
+        assets = env.ASSETS;
+      } catch {}
+    }
     const url = new URL(request.url);
     const isApiCall = url.searchParams.has("api") || request.headers.get("Accept")?.includes("application/json");
-    const doc = await getMarkdownDocument(sanitizedSlug, request);
+    const doc = await getMarkdownDocument(sanitizedSlug, request, assets);
     if (!doc) {
       throw new Response("Document not found", { status: 404 });
     }
@@ -999,4 +1022,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=2960F25AC7413D2D64756E2164756E21
+//# debugId=1D10949178F3FB1064756E2164756E21
