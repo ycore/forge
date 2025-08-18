@@ -1,2 +1,1 @@
-export { createMarkdownSlugLoader } from './markdown.$slug.server';
-export { createMarkdownLoader } from './markdown.server';
+export { markdownLoader, markdownSlugLoader } from './markdown.server';

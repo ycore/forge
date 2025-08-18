@@ -22,6 +22,11 @@ export const ASSET_PREFIX = {
   fetch: '/assets/docs'   // URL prefix for fetching assets at runtime
 } as const;
 
+export const ASSET_ROUTES = {
+  docs: (slug: string) => `/docs#${slug}`,
+  docsApi: (slug: string) => `/docs/${slug}?api`,
+};
+
 // DOMPurify configuration for markdown content
 export const DOMPURIFY_CONFIG = {
   ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'del', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'] as string[],

@@ -1,39 +1,36 @@
-import type { EnhancedMarkdownMeta, MarkdownLoaderArgs } from '../../@types/markdown.types';
-import { CloudflareContext } from '../../adapters/cloudflare/context.server';
-import { getMarkdownManifest } from '../markdown-data';
+import { redirect } from 'react-router';
+import { ASSET_ROUTES } from '../markdown-config';
+import { getMarkdownDocument, getMarkdownManifest } from '../markdown-data';
 
-// Enhanced loader for Cloudflare Worker environments
-export function createMarkdownLoader() {
-  return async function markdownLoader({ request, context }: MarkdownLoaderArgs): Promise<EnhancedMarkdownMeta[]> {
-    try {
-      console.log('markdownLoader: Starting manifest fetch for request URL:', request.url);
+export async function markdownLoader({ request, ASSETS }: { request: Request; ASSETS: Fetcher }) {
+  try {
+    const manifest = await getMarkdownManifest(ASSETS, request);
+    return manifest;
+  } catch (_error) {
+    return [];
+  }
+}
 
-      // Get ASSETS binding from Cloudflare context
-      if (!context) {
-        throw new Error('Context is required for ASSETS binding');
-      }
+export async function markdownSlugLoader({ validatedSlug, request, ASSETS }: { validatedSlug: string; request: Request; ASSETS: Fetcher }) {
+  const url = new URL(request.url);
+  const isApiCall = url.searchParams.has('api') || request.headers.get('Accept')?.includes('application/json');
 
-      const contextValue = context.get(CloudflareContext);
-      console.log('markdownLoader: Context check - contextValue:', !!contextValue, 'env:', !!contextValue?.env, 'ASSETS:', !!contextValue?.env?.ASSETS);
-      
-      if (!contextValue || !contextValue.env) {
-        throw new Error('CloudflareContext not properly initialized');
-      }
-      
-      const { env } = contextValue;
-      if (!env.ASSETS) {
-        throw new Error('ASSETS binding not available');
-      }
+  // Check if the document exists
+  const doc = await getMarkdownDocument(validatedSlug, ASSETS, request);
+  if (!doc) {
+    throw new Response('Document not found', { status: 404 });
+  }
 
-      console.log('markdownLoader: Using ASSETS binding for asset fetching');
-      const manifest = await getMarkdownManifest(env.ASSETS, request);
-      console.log('markdownLoader: Successfully loaded manifest with', manifest.length, 'documents');
-      return manifest as EnhancedMarkdownMeta[];
-    } catch (error) {
-      console.error('markdownLoader: Failed to load manifest:', error);
-      console.error('markdownLoader: Request URL was:', request.url);
-      // Return empty array so the UI can show "No documentation found" instead of crashing
-      return [];
-    }
-  };
+  // If it's an API call, return the document data
+  if (isApiCall) {
+    const enhancedFrontmatter = {
+      ...doc.frontmatter,
+      formattedDate: doc.frontmatter.date ? new Date(doc.frontmatter.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
+    };
+
+    return Response.json({ content: doc.content, frontmatter: enhancedFrontmatter, slug: validatedSlug });
+  }
+
+  // Otherwise, redirect to main docs page with fragment
+  return redirect(ASSET_ROUTES.docs(validatedSlug));
 }

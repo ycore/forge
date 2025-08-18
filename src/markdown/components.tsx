@@ -6,21 +6,38 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps } from '../../@types/markdown.types';
-import { Markdown } from '../markdown-loader';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps, MarkdownProps } from '../@types/markdown.types';
+import { ASSET_ROUTES } from './markdown-config';
+
+// ============================================================================
+// CORE MARKDOWN RENDERER COMPONENT
+// ============================================================================
+
+/**
+ * Simple markdown content renderer component
+ * Renders pre-sanitized HTML content from markdown processing
+ */
+export function MarkdownRenderer({ children, className = '' }: MarkdownProps) {
+  if (!children || typeof children !== 'string') {
+    return <div className={className} />;
+  }
+
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is pre-sanitized at build time
+  return <div className={className} dangerouslySetInnerHTML={{ __html: children }} />;
+}
+
+// ============================================================================
+// MAIN DOCUMENTATION PAGE COMPONENT
+// ============================================================================
 
 // Type guard
 const isDocContent = (data: unknown): data is DocContent => {
   return typeof data === 'object' && data !== null && 'content' in data && 'frontmatter' in data && 'slug' in data;
 };
 
-export const ROUTES_TEMPLATE = {
-  docs: (slug: string) => `/docs#${slug}`,
-  docsApi: (slug: string) => `/docs/${slug}?api`,
-};
-
-// Client-side React component for displaying markdown documentation
-
+/**
+ * Main documentation page component with sidebar navigation and document viewer
+ */
 export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
   const docs = loaderData;
   const location = useLocation();
@@ -37,8 +54,8 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
       if (selectedDoc === slug) return;
       setSelectedDoc(slug);
       setError(null);
-      fetcher.load(ROUTES_TEMPLATE.docsApi(slug));
-      window.history.replaceState(null, '', ROUTES_TEMPLATE.docs(slug));
+      fetcher.load(ASSET_ROUTES.docsApi(slug));
+      window.history.replaceState(null, '', ASSET_ROUTES.docs(slug));
     },
     [fetcher.load, selectedDoc]
   );
@@ -48,7 +65,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
     const hash = location.hash.slice(1);
     if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash) && !selectedDoc) {
       setSelectedDoc(hash);
-      fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
+      fetcher.load(ASSET_ROUTES.docsApi(hash));
     }
   }, [docs, fetcher.load, selectedDoc, location.hash.slice]);
 
@@ -59,7 +76,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
       if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash)) {
         setSelectedDoc(hash);
         setError(null);
-        fetcher.load(ROUTES_TEMPLATE.docsApi(hash));
+        fetcher.load(ASSET_ROUTES.docsApi(hash));
       } else {
         setSelectedDoc(null);
         setError(null);
@@ -155,7 +172,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
             ) : currentDoc ? (
               <article className="markdown-content min-w-0 py-8 md:py-12">
                 <DocumentHeader frontmatter={currentDoc.frontmatter} />
-                <Markdown className="min-w-0 max-w-none">{currentDoc.content}</Markdown>
+                <MarkdownRenderer className="min-w-0 max-w-none">{currentDoc.content}</MarkdownRenderer>
               </article>
             ) : (
               <DocumentNotFound spriteUrl={spriteUrl} />
@@ -167,12 +184,13 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
   );
 }
 
+// ============================================================================
+// SUPPORTING UI COMPONENTS
+// ============================================================================
+
 const DocListEmpty = () => {
   return <p className="text-gray-500 text-sm dark:text-gray-400">No documentation found.</p>;
 };
-
-// Memoized components
-// const LoadingBar = memo(() => <div className="loading-bar" />);
 
 const DocumentNotFound = memo(({ spriteUrl }: { spriteUrl: string }) => (
   <div className="flex h-96 items-center justify-center">
