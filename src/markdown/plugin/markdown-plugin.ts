@@ -528,8 +528,13 @@ function sortManifest(manifest: MarkdownMeta[]): MarkdownMeta[] {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     }
 
-    // Finally by title
-    return a.title?.localeCompare(b.title || '') || 0;
+    // Then by title
+    if (a.title && b.title) {
+      return a.title.localeCompare(b.title);
+    }
+
+    // Finally by slug to ensure deterministic ordering
+    return a.slug.localeCompare(b.slug);
   });
 }
 

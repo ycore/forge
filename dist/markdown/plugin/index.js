@@ -44,9 +44,10 @@ var HIGHLIGHTER_CONFIG = {
 
 // src/markdown/plugin/plugin-utils.ts
 import path from "node:path";
-function getAssetPath(filename) {
-  const buildPrefix = ASSET_PREFIX.build.startsWith("/") ? ASSET_PREFIX.build.slice(1) : ASSET_PREFIX.build;
-  return path.join(process.cwd(), "public", buildPrefix, filename);
+function getAssetPath(filename, prefix) {
+  const buildPrefix = prefix || ASSET_PREFIX.build;
+  const normalizedPrefix = buildPrefix.startsWith("/") ? buildPrefix.slice(1) : buildPrefix;
+  return path.join(process.cwd(), "public", normalizedPrefix, filename);
 }
 
 // src/markdown/plugin/markdown-plugin.ts
@@ -448,7 +449,10 @@ function sortManifest(manifest) {
     if (a.date && b.date) {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     }
-    return a.title?.localeCompare(b.title || "") || 0;
+    if (a.title && b.title) {
+      return a.title.localeCompare(b.title);
+    }
+    return a.slug.localeCompare(b.slug);
   });
 }
 async function createShikiHighlighter(config = {}) {
@@ -508,4 +512,4 @@ export {
   getAssetPath
 };
 
-//# debugId=737F05A1BEE6AA8964756E2164756E21
+//# debugId=5B9E2D95A829B3E964756E2164756E21
