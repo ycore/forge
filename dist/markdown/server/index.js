@@ -2,6 +2,22 @@
 import { redirect } from "react-router";
 
 // src/markdown/markdown-config.ts
+var MARKDOWN_CONFIG = {
+  EXTENSION: ".md",
+  CHUNK_BY_FOLDER: true,
+  INCREMENTAL_BY_FOLDER: false,
+  PREFIX: "markdown",
+  PURIFY_HTML: true,
+  UPDATE_DATE: true,
+  COMPRESS: true,
+  CONCURRENCY: {
+    FOLDERS: 5,
+    FILES: 10
+  },
+  CACHE: {
+    MAX_AGE: 3600
+  }
+};
 var ASSET_PREFIX = {
   build: "/assets/docs",
   fetch: "/assets/docs"
@@ -199,9 +215,10 @@ function pipe(...pipe2) {
 
 // src/markdown/markdown-utils.ts
 var documentSlugSchema = pipe(string(), trim(), minLength(1, "Slug cannot be empty"), regex(/^[a-zA-Z0-9-_/]+$/, "Slug can only contain letters, numbers, hyphens, underscores, and forward slashes"), check((slug) => !slug.includes(".."), "Directory traversal not allowed"), check((slug) => !slug.startsWith("/"), "Slug cannot start with forward slash"), check((slug) => !slug.endsWith("/"), "Slug cannot end with forward slash"));
-function formatAssetUrl(filename, request) {
-  const fetchPrefix = ASSET_PREFIX.fetch.endsWith("/") ? ASSET_PREFIX.fetch.slice(0, -1) : ASSET_PREFIX.fetch;
-  const url = `${fetchPrefix}/${filename}`;
+function formatAssetUrl(filename, request, prefix) {
+  const fetchPrefix = prefix || ASSET_PREFIX.fetch;
+  const normalizedPrefix = fetchPrefix.endsWith("/") ? fetchPrefix.slice(0, -1) : fetchPrefix;
+  const url = `${normalizedPrefix}/${filename}`;
   return request ? new URL(url, request.url).href : url;
 }
 
@@ -242,12 +259,12 @@ async function fetchContent(url, assets) {
     throw new Error(errorMsg);
   }
 }
-async function getGlobalManifest(assets, request) {
+async function getGlobalManifest(assets, request, prefix) {
   if (globalManifestCache) {
     return globalManifestCache;
   }
   try {
-    const manifestUrl = formatAssetUrl("markdown-manifest.json", request);
+    const manifestUrl = formatAssetUrl(`${prefix || MARKDOWN_CONFIG.PREFIX}-manifest.json`, request);
     const globalManifest = await fetchContent(manifestUrl, assets);
     globalManifestCache = globalManifest;
     return globalManifest;
@@ -255,17 +272,17 @@ async function getGlobalManifest(assets, request) {
     return { documents: [], _buildMode: "single" };
   }
 }
-async function getMarkdownManifest(assets, request) {
+async function getMarkdownManifest(assets, request, prefix) {
   if (manifestCache) {
     return manifestCache;
   }
-  const globalManifest = await getGlobalManifest(assets, request);
+  const globalManifest = await getGlobalManifest(assets, request, prefix);
   const cleanManifest = globalManifest.documents.map(({ _mtime, _size, ...item }) => item);
   manifestCache = cleanManifest;
   return cleanManifest;
 }
-async function getMarkdownContent(assets, request) {
-  const globalManifest = await getGlobalManifest(assets, request);
+async function getMarkdownContent(assets, request, prefix) {
+  const globalManifest = await getGlobalManifest(assets, request, prefix);
   if (globalManifest._buildMode === "chunked") {
     return {};
   }
@@ -273,7 +290,7 @@ async function getMarkdownContent(assets, request) {
     return contentCache;
   }
   try {
-    const contentUrl = formatAssetUrl("markdown-content.json", request);
+    const contentUrl = formatAssetUrl(`${prefix || MARKDOWN_CONFIG.PREFIX}-content.json`, request);
     const content = await fetchContent(contentUrl, assets);
     contentCache = content;
     return content;
@@ -281,7 +298,7 @@ async function getMarkdownContent(assets, request) {
     return {};
   }
 }
-async function loadFolderContent(folder, assets, request) {
+async function loadFolderContent(folder, assets, request, prefix) {
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
     if (cachedContent) {
@@ -290,7 +307,7 @@ async function loadFolderContent(folder, assets, request) {
   }
   try {
     const folderKey = folder.replace(/[/\\]/g, "-");
-    const contentUrl = formatAssetUrl(`markdown-content-${folderKey}.json`, request);
+    const contentUrl = formatAssetUrl(`${prefix || MARKDOWN_CONFIG.PREFIX}-content-${folderKey}.json`, request);
     const content = await fetchContent(contentUrl, assets);
     folderContentCache.set(folder, content);
     return content;
@@ -298,18 +315,18 @@ async function loadFolderContent(folder, assets, request) {
     return {};
   }
 }
-async function getMarkdownDocument(slug, assets, request) {
-  const globalManifest = await getGlobalManifest(assets, request);
+async function getMarkdownDocument(slug, assets, request, prefix) {
+  const globalManifest = await getGlobalManifest(assets, request, prefix);
   if (globalManifest._buildMode === "chunked") {
-    const manifest = await getMarkdownManifest(assets, request);
+    const manifest = await getMarkdownManifest(assets, request, prefix);
     const docMeta = manifest.find((doc) => doc.slug === slug);
     if (!docMeta || !docMeta.folder) {
       return null;
     }
-    const folderContent = await loadFolderContent(docMeta.folder, assets, request);
+    const folderContent = await loadFolderContent(docMeta.folder, assets, request, prefix);
     return folderContent[slug] || null;
   }
-  const content = await getMarkdownContent(assets, request);
+  const content = await getMarkdownContent(assets, request, prefix);
   return content[slug] || null;
 }
 
@@ -343,4 +360,4 @@ export {
   markdownLoader
 };
 
-//# debugId=0E52CCD8D0B4BE7164756E2164756E21
+//# debugId=1AF7E24437EC86AC64756E2164756E21
