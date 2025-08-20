@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "sources": ["../../src/date/timestamp-utils.ts"],
+  "sourcesContent": [
+    "/**\n * Get current timestamp in milliseconds\n */\nexport function getCurrentTimestamp(): number {\n  return Date.now();\n}\n\n/**\n * Add time to current timestamp\n */\nexport function addTimeToNow(timeInSeconds: number): number {\n  return getCurrentTimestamp() + (timeInSeconds * 1000);\n}\n\n/**\n * Check if timestamp is expired\n */\nexport function isExpired(expirationTimestamp: number): boolean {\n  return getCurrentTimestamp() > expirationTimestamp;\n}\n\n/**\n * Time constants for session management\n */\nexport const AUTH_SESSION_TTL = 60 * 60 * 24 * 15; // 15 days\nexport const AUTH_TOTP_PERIOD = 60 * 10; // 10 minutes\n"
+  ],
+  "mappings": ";AAGO,SAAS,mBAAmB,GAAW;AAAA,EAC5C,OAAO,KAAK,IAAI;AAAA;AAMX,SAAS,YAAY,CAAC,eAA+B;AAAA,EAC1D,OAAO,oBAAoB,IAAK,gBAAgB;AAAA;AAM3C,SAAS,SAAS,CAAC,qBAAsC;AAAA,EAC9D,OAAO,oBAAoB,IAAI;AAAA;AAM1B,IAAM,mBAAmB,KAAK,KAAK,KAAK;AACxC,IAAM,mBAAmB,KAAK;",
+  "debugId": "001CEFF9256E151664756E2164756E21",
+  "names": []
+}
