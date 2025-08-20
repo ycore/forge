@@ -16,8 +16,6 @@ const documentSlugSchema = v.pipe(
   v.check(slug => !slug.endsWith('/'), 'Slug cannot end with forward slash')
 );
 
-export type DocumentSlug = v.InferOutput<typeof documentSlugSchema>;
-
 /**
  * Validates and sanitizes a document slug
  * @param slug - The slug to validate
