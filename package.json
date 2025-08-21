@@ -80,12 +80,7 @@
     "vite": "catalog:dev"
   },
   "scripts": {
-    "build": "bun run clean && bun run build:browser && bun run build:node && bun run build:types",
-    "build:browser": "vite build",
-    "build:node": "vite build --config vite.node.config.ts",
-    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-    "dev": "vite build --watch",
     "clean": "rm -rf dist",
-    "ws:types": "wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && wrangler types --include-runtime=false './src/@types/worker-configuration.d.ts' && tsc --noEmit"
+    "ws:types": "bun ../../scripts/build-package.ts . --types-only && wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && wrangler types --include-runtime=false './src/@types/worker-configuration.d.ts' && tsc --noEmit"
   }
 }

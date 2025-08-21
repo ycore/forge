@@ -1,5 +1,4 @@
-// Consolidated type definitions for markdown system
-import type { ThemeContext } from '@ycore/componentry/impetus';
+import type { ThemeContext } from '@ycore/componentry/impetus/theme';
 import type { unstable_RouterContextProvider } from 'react-router';
 
 export interface Frontmatter {

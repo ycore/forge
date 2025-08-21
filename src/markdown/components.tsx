@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: acceptable */
 import { SpriteIcon } from '@ycore/componentry/images';
-import type { Themes } from '@ycore/componentry/impetus';
-import { LoadingBar, ThemeSwitch } from '@ycore/componentry/impetus';
+import { LoadingBar } from '@ycore/componentry/impetus';
+import type { Themes } from '@ycore/componentry/impetus/theme';
+import { ThemeSwitch } from '@ycore/componentry/impetus/theme';
 import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
