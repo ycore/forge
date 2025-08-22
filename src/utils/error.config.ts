@@ -1,4 +1,4 @@
-import type { ErrorCode } from "./@types/error-types.types";
+import type { ErrorCode } from "./@types/error.types";
 
 /**
  * Error codes for different error types

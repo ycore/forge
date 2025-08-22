@@ -1,1 +1,0 @@
-export { getRequestMetadata } from "./headers";
