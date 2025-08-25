@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
 import type { BaseSchema, InferOutput } from 'valibot';
 import type { FieldError, TypedResult } from '../../error/@types/error.types';
 
