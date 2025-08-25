@@ -39,6 +39,6 @@ export const DOMPURIFY_CONFIG = {
 
 // Shiki highlighter configuration
 export const HIGHLIGHTER_CONFIG = {
-  LANGS: ['javascript', 'typescript', 'css', 'html', 'bash', 'yaml', 'json', 'markdown'] as string[],
+  LANGS: ['bash', 'css', 'html', 'javascript', 'json', 'markdown', 'sql', 'ts', 'tsx', 'typescript', 'yaml'] as string[],
   THEMES: ['night-owl'] as string[],
 };

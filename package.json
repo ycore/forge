@@ -13,6 +13,11 @@
       "types": "./dist/adapters/cloudflare/server/index.d.ts",
       "default": "./src/adapters/cloudflare/server/index.ts"
     },
+    "./error": {
+      "import": "./dist/error/index.js",
+      "types": "./dist/error/index.d.ts",
+      "default": "./src/error/index.ts"
+    },
     "./markdown": {
       "import": "./dist/markdown/index.js",
       "types": "./dist/markdown/index.d.ts",
@@ -65,7 +70,7 @@
     "vite": "catalog:dev"
   },
   "scripts": {
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist node_modules",
     "ws:types": "bun ../../scripts/build-package.ts . --types-only && wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && wrangler types --include-runtime=false './src/@types/worker-configuration.d.ts' && tsc --noEmit"
   }
 }

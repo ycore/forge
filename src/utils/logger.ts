@@ -1,4 +1,6 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
 import type { BaseLogParams, LogLevel, LogParams } from './@types/logger.types';
+
 /**
  * Structured Logging Utility
  * Format and output JSON logs according to Cloudflare Workers Logs best practices
@@ -34,18 +36,41 @@ export const logger = {
   },
 
   debug(params: BaseLogParams) {
-    this.log({ ...params, level: 'debug' });
+    if (DEBUG_ENABLED) {
+      this.log({ ...params, level: 'debug' });
+    }
   },
 
   info(params: BaseLogParams) {
-    this.log({ ...params, level: 'info' });
+    if (IS_DEVELOPMENT) {
+      this.log({ ...params, level: 'info' });
+    }
   },
 
   warn(params: BaseLogParams) {
-    this.log({ ...params, level: 'warn' });
+    if (IS_DEVELOPMENT) {
+      this.log({ ...params, level: 'warn' });
+    }
   },
 
   error(params: BaseLogParams) {
     this.log({ ...params, level: 'error' });
   },
 };
+
+// Safe environment variable access that works in both Node.js and browser environments
+export const getEnvVar = (name: string): string | undefined => {
+  // In a Vite environment (browser/SSR)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[name];
+  }
+  // Fallback for Node environments
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[name];
+  }
+  return undefined;
+};
+
+// The double-gated approach (IS_DEVELOPMENT && DEBUG_ENABLED) ensures debug logs never accidentally appear in production.
+const IS_DEVELOPMENT = getEnvVar('NODE_ENV') === 'development';
+const DEBUG_ENABLED = IS_DEVELOPMENT && getEnvVar('DEBUG') === 'true';
