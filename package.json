@@ -8,11 +8,6 @@
     "url": "git+ssh://git@github.com/ycore/forge.git"
   },
   "exports": {
-    "./adapters/cloudflare/server": {
-      "import": "./dist/adapters/cloudflare/server/index.js",
-      "types": "./dist/adapters/cloudflare/server/index.d.ts",
-      "default": "./src/adapters/cloudflare/server/index.ts"
-    },
     "./error": {
       "import": "./dist/error/index.js",
       "types": "./dist/error/index.d.ts",
@@ -36,6 +31,11 @@
       }
     },
     "./markdown/styles/markdown.css": "./dist/markdown/styles/markdown.css",
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts",
+      "default": "./src/server/index.ts"
+    },
     "./utils": {
       "import": "./dist/utils/index.js",
       "types": "./dist/utils/index.d.ts",

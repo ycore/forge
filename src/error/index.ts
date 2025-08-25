@@ -1,3 +1,4 @@
+export type { GetIntentOptions, IntentResult } from '../server';
 export type { BaseError, ErrorCollection, FieldError, TypedResult } from './@types/error.types';
 export type { BaseLogParams, LogLevel, LogParams } from './@types/logger.types';
 export type { ValidationResult } from './@types/validate-helpers.types';
