@@ -18,7 +18,8 @@ export function transformError(error: unknown): BaseError {
   }
 
   if (typeof error === 'object' && error !== null && 'message' in error) {
-    return { messages: [String((error as { message: unknown }).message)] };
+    const message = (error as { message: unknown }).message;
+    return { messages: [typeof message === 'string' ? message : String(message)] };
   }
 
   return { messages: ['Unknown error occurred'] };
@@ -52,8 +53,14 @@ export function parseIssues(issues: any[]): FieldError {
 }
 
 /**
- * Get summary string from ErrorCollection for logging
+ * Get summary string from ErrorCollection or FieldError for logging
  */
-export function getErrorSummary(errors: ErrorCollection): string {
-  return errors.flatMap(error => error.messages).join('; ');
+export function flattenErrors(errors: ErrorCollection | FieldError): string {
+  if (Array.isArray(errors)) {
+    return errors.flatMap(error => error.messages).join('; ');
+  }
+
+  return Object.values(errors)
+    .flatMap(fieldErrors => fieldErrors.flatMap(error => error.messages))
+    .join('; ');
 }
