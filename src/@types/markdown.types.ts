@@ -28,10 +28,17 @@ export interface MarkdownContent {
 }
 
 export interface MarkdownPageProps {
-  loaderData: EnhancedMarkdownMeta[];
+  loaderData: EnhancedMarkdownMeta[] | MarkdownPageData;
   spriteUrl: string;
   themeContext?: ThemeContext;
   context?: any;
+}
+
+export interface MarkdownPageData {
+  manifest: EnhancedMarkdownMeta[];
+  selectedDoc?: string;
+  document?: MarkdownContent | null;
+  loading?: boolean;
 }
 
 export interface MarkdownProps {

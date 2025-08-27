@@ -6,8 +6,8 @@ import { ThemeSwitch } from '@ycore/componentry/impetus/theme';
 import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
-import { useFetcher, useLocation } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownPageProps, MarkdownProps } from '../@types/markdown.types';
+import { useFetcher, useLocation, useNavigate } from 'react-router';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageData, MarkdownPageProps, MarkdownProps } from '../@types/markdown.types';
 import { ASSET_ROUTES } from './markdown-config';
 
 // ============================================================================
@@ -31,18 +31,26 @@ export function MarkdownRenderer({ children, className = '' }: MarkdownProps) {
 // MAIN DOCUMENTATION PAGE COMPONENT
 // ============================================================================
 
-// Type guard
+// Type guards
 const isDocContent = (data: unknown): data is DocContent => {
   return typeof data === 'object' && data !== null && 'content' in data && 'frontmatter' in data && 'slug' in data;
+};
+
+const isMarkdownPageData = (data: unknown): data is MarkdownPageData => {
+  return typeof data === 'object' && data !== null && 'manifest' in data;
 };
 
 /**
  * Main documentation page component with sidebar navigation and document viewer
  */
 export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
-  const docs = loaderData;
+  // Handle both data structures: array of docs or structured page data
+  const pageData = isMarkdownPageData(loaderData) ? loaderData : { manifest: loaderData, selectedDoc: undefined, document: undefined };
+  const { manifest: docs, selectedDoc: preloadedDoc, document: preloadedDocument, loading: serverLoading } = pageData;
+
   const location = useLocation();
-  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(preloadedDoc || null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -53,40 +61,36 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
   const handleDocSelect = useCallback(
     (slug: string) => {
       if (selectedDoc === slug) return;
-      setSelectedDoc(slug);
-      setError(null);
-      fetcher.load(ASSET_ROUTES.docsApi(slug));
-      window.history.replaceState(null, '', ASSET_ROUTES.docs(slug));
+      navigate(ASSET_ROUTES.docs(slug));
     },
-    [fetcher.load, selectedDoc]
+    [selectedDoc, navigate]
   );
 
-  // Initialize from URL hash on mount only
+  // Initialize selected doc from URL path or preloaded data
   useEffect(() => {
-    const hash = location.hash.slice(1);
-    if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash) && !selectedDoc) {
-      setSelectedDoc(hash);
-      fetcher.load(ASSET_ROUTES.docsApi(hash));
-    }
-  }, [docs, fetcher.load, selectedDoc, location.hash.slice]);
-
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      const hash = window.location.hash.slice(1);
-      if (hash && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === hash)) {
-        setSelectedDoc(hash);
-        setError(null);
-        fetcher.load(ASSET_ROUTES.docsApi(hash));
-      } else {
+    if (preloadedDoc && preloadedDoc !== selectedDoc) {
+      setSelectedDoc(preloadedDoc);
+      setError(null);
+    } else {
+      // Extract slug from URL path: /forge/docs/some/nested/path -> some/nested/path
+      const pathParts = location.pathname.split('/');
+      const docsIndex = pathParts.indexOf('docs');
+      if (docsIndex !== -1 && docsIndex < pathParts.length - 1) {
+        const slug = pathParts.slice(docsIndex + 1).join('/');
+        if (slug && docs.find((doc: EnhancedMarkdownMeta) => doc.slug === slug) && selectedDoc !== slug) {
+          setSelectedDoc(slug);
+          // Only fetch if we don't have preloaded document data
+          if (!preloadedDocument || preloadedDoc !== slug) {
+            fetcher.load(ASSET_ROUTES.docsApi(slug));
+          }
+        }
+      } else if (selectedDoc && !preloadedDoc) {
+        // No slug in path, clear selection
         setSelectedDoc(null);
         setError(null);
       }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [docs, fetcher.load]);
+    }
+  }, [docs, fetcher.load, selectedDoc, location.pathname, preloadedDoc, preloadedDocument]);
 
   // Handle fetch errors
   useEffect(() => {
@@ -95,7 +99,10 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
     }
   }, [fetcher.state, fetcher.data]);
 
-  const currentDoc = isDocContent(fetcher.data) ? fetcher.data : undefined;
+  // Determine current document: preloaded document, fetched document, or none
+  const currentDoc = preloadedDocument && preloadedDoc === selectedDoc
+    ? { content: preloadedDocument.content, frontmatter: preloadedDocument.frontmatter, slug: selectedDoc }
+    : isDocContent(fetcher.data) ? fetcher.data : undefined;
 
   return (
     <div className="min-h-screen bg-white transition-colors dark:bg-gray-900">
@@ -166,7 +173,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
                   <p className="text-gray-500 dark:text-gray-400">Choose a document from the sidebar to view its content.</p>
                 </div>
               </div>
-            ) : fetcher.state === 'loading' ? (
+            ) : fetcher.state === 'loading' || serverLoading || (selectedDoc && !currentDoc && !error) ? (
               <LoadingBar />
             ) : error ? (
               <DocumentNotFound spriteUrl={spriteUrl} />
