@@ -13,6 +13,11 @@
       "types": "./dist/error/index.d.ts",
       "default": "./src/error/index.ts"
     },
+    "./logger": {
+      "import": "./dist/logger/index.js",
+      "types": "./dist/logger/index.d.ts",
+      "default": "./src/logger/index.ts"
+    },
     "./markdown": {
       "import": "./dist/markdown/index.js",
       "types": "./dist/markdown/index.d.ts",
