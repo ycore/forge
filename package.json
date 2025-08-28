@@ -1,6 +1,6 @@
 {
   "name": "@ycore/forge",
-  "version": "2.2.9",
+  "version": "2.2.10",
   "private": true,
   "type": "module",
   "repository": {
@@ -60,7 +60,6 @@
     "src"
   ],
   "peerDependencies": {
-    "@ycore/componentry": ">= 2.1.0 < 3",
     "clsx": ">= 2.1.0 < 3",
     "isomorphic-dompurify": ">= 2.26.0 < 3",
     "marked": ">= 16.0.0 < 17",
