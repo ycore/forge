@@ -1,6 +1,6 @@
 {
   "name": "@ycore/forge",
-  "version": "2.2.8",
+  "version": "2.2.9",
   "private": true,
   "type": "module",
   "repository": {
@@ -60,19 +60,19 @@
     "src"
   ],
   "peerDependencies": {
-    "@ycore/componentry": "catalog:peer",
-    "clsx": "catalog:peer",
-    "isomorphic-dompurify": "catalog:peer",
-    "marked": "catalog:peer",
-    "react": "catalog:peer",
-    "react-dom": "catalog:peer",
-    "react-router": "catalog:peer",
-    "shiki": "catalog:peer"
+    "@ycore/componentry": "workspace:*",
+    "clsx": ">= 2.1.0 < 3",
+    "isomorphic-dompurify": ">= 2.26.0 < 3",
+    "marked": ">= 16.0.0 < 17",
+    "react": ">= 19.1.0 < 20",
+    "react-dom": ">= 19.1.0 < 20",
+    "react-router": ">= 7.6.0 < 8",
+    "shiki": ">= 3.7.0 < 4"
   },
   "devDependencies": {
-    "@total-typescript/tsconfig": "catalog:dev",
-    "@types/react": "catalog:dev",
-    "vite": "catalog:dev"
+    "@total-typescript/tsconfig": "^1.0.4",
+    "@types/react": "^19.1.8",
+    "vite": "^7.0.2"
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
