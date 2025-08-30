@@ -1,5 +1,4 @@
 import type { LoggerConfig, LogLevel } from './@types/logger.types';
-import { createChannelsFromConfig, getChannelConfigForSituation, type SituationConfig } from './channels/registry';
 
 // RFC 5424 log level hierarchy (higher number = higher severity)
 export const LOG_LEVELS: Record<LogLevel, number> = {
@@ -21,208 +20,87 @@ export function shouldLog(level: LogLevel, minLevel: LogLevel): boolean {
 }
 
 /**
- * Safe environment variable access for different runtimes
+ * Get environment-specific channel options
  */
-function getEnvVar(name: string): string | undefined {
-  // Cloudflare Workers environment
-  // biome-ignore lint/suspicious/noExplicitAny: acceptable
-  if (typeof globalThis !== 'undefined' && (globalThis as any).ENVIRONMENT) {
-    // biome-ignore lint/suspicious/noExplicitAny: acceptable
-    return (globalThis as any).ENVIRONMENT[name];
+export function getChannelOptions(registry: 'console' | 'kv', environment: 'development' | 'production', baseOptions: Record<string, any> = {}, kv?: KVNamespace): Record<string, any> {
+  let options = { ...baseOptions };
+
+  // Console channel environment-specific defaults
+  if (registry === 'console') {
+    options = {
+      prettyPrint: environment === 'development',
+      useLogLevelMethods: environment === 'development',
+      ...options,
+    };
   }
 
-  // Vite environment (browser/SSR)
-  // biome-ignore lint/suspicious/noExplicitAny: acceptable
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    // biome-ignore lint/suspicious/noExplicitAny: acceptable
-    return (import.meta as any).env[name];
+  // KV channel - inject KV namespace
+  if (registry === 'kv' && kv) {
+    options = { ...options, kv };
   }
 
-  // Node.js environment
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[name];
-  }
-
-  return undefined;
+  return options;
 }
 
 /**
- * Runtime environment detection
+ * Get environment-specific logger defaults
  */
-export function isCloudflareWorker(): boolean {
-  return typeof caches !== 'undefined' && typeof navigator === 'undefined';
-}
+export function getLoggerDefaults(config: LoggerConfig, environment: 'development' | 'production'): { defaultLevel: LogLevel; enableSanitization: boolean } {
+  const defaults = config.defaults?.[environment];
 
-export function isDevelopment(): boolean {
-  const nodeEnv = getEnvVar('NODE_ENV');
-  return nodeEnv === 'development' || (!nodeEnv && !isCloudflareWorker());
-}
-
-export function isProduction(): boolean {
-  return getEnvVar('NODE_ENV') === 'production';
+  return {
+    defaultLevel: defaults?.defaultLevel || (environment === 'production' ? 'warning' : 'info'),
+    enableSanitization: defaults?.enableSanitization ?? true,
+  };
 }
 
 /**
- * Default channel configurations for different environments
+ * Default logger configuration
  */
-export const DEFAULT_CHANNEL_CONFIG: SituationConfig = {
-  default: [
+export const defaultLoggerConfig: LoggerConfig = {
+  init: [
     {
-      type: 'console',
-      minLevel: 'info',
-      config: { prettyPrint: false },
+      environment: 'development',
+      channel: 'console',
+      level: 'debug',
+    },
+    {
+      environment: 'production',
+      channel: 'console',
+      level: 'warning',
+    },
+    {
+      environment: 'development',
+      channel: 'kv',
+      level: 'info',
+    },
+    {
+      environment: 'production',
+      channel: 'kv',
+      level: 'warning',
     },
   ],
-  development: [
-    {
-      type: 'console',
-      minLevel: 'debug',
-      config: { prettyPrint: true, useLogLevelMethods: true },
+  channels: {
+    console: {
+      registry: 'console',
+      options: {}, // Will be populated with environment defaults
     },
-  ],
-  production: [
-    {
-      type: 'console',
-      minLevel: 'warning',
-      config: { prettyPrint: false },
+    kv: {
+      registry: 'kv',
+      options: {
+        logsLimit: 500,
+        logsTrigger: 750,
+      },
     },
-  ],
-  situations: {
-    'cloudflare-worker': [
-      {
-        type: 'console',
-        minLevel: 'info',
-        config: { prettyPrint: false },
-      },
-    ],
-    'with-webhook': [
-      {
-        type: 'console',
-        minLevel: 'info',
-        config: { prettyPrint: false },
-      },
-      {
-        type: 'webhook',
-        minLevel: 'error',
-        config: {
-          webhookUrl: '', // Will be populated from environment
-          timeout: 5000,
-          retry: { attempts: 3, delay: 1000 },
-        },
-      },
-    ],
+  },
+  defaults: {
+    development: {
+      defaultLevel: 'debug',
+      enableSanitization: true,
+    },
+    production: {
+      defaultLevel: 'warning',
+      enableSanitization: true,
+    },
   },
 };
-
-/**
- * Create environment-specific logger configuration
- */
-export function createLoggerConfig(): LoggerConfig {
-  const environment = isDevelopment() ? 'development' : isProduction() ? 'production' : 'default';
-  const debugEnabled = getEnvVar('DEBUG') === 'true';
-  const webhookUrl = getEnvVar('LOG_WEBHOOK_URL');
-
-  // Determine situation
-  let situation: string | undefined;
-  if (isCloudflareWorker()) {
-    situation = webhookUrl ? 'with-webhook' : 'cloudflare-worker';
-  } else if (webhookUrl) {
-    situation = 'with-webhook';
-  }
-
-  // Get base channel configuration
-  let channelConfigs = getChannelConfigForSituation(
-    DEFAULT_CHANNEL_CONFIG,
-    environment,
-    situation
-  );
-
-  // Adjust console level for debug mode in development
-  if (isDevelopment() && debugEnabled) {
-    channelConfigs = channelConfigs.map(config => {
-      if (config.type === 'console') {
-        return {
-          ...config,
-          minLevel: 'debug' as LogLevel,
-        };
-      }
-      return config;
-    });
-  }
-
-  // Populate webhook URL if needed
-  if (webhookUrl) {
-    channelConfigs = channelConfigs.map(config => {
-      if (config.type === 'webhook' && config.config) {
-        return {
-          ...config,
-          config: {
-            ...config.config,
-            webhookUrl,
-          },
-        };
-      }
-      return config;
-    });
-  }
-
-  const channels = createChannelsFromConfig(channelConfigs);
-
-  return {
-    defaultLevel: isDevelopment() && debugEnabled ? 'debug' :
-      isProduction() ? 'warning' : 'info',
-    channels,
-    enableSanitization: true,
-  };
-}
-
-/**
- * Create logger configuration with KV storage support
- */
-export function createLoggerConfigWithKV(kv: KVNamespace): LoggerConfig {
-  const baseConfig = createLoggerConfig();
-
-  // KV storage configuration by environment
-  const kvConfig = {
-    production: { logsLimit: 500, logsTrigger: 750 },
-    development: { logsLimit: 100, logsTrigger: 150 },
-  } as const;
-
-  const environment = isDevelopment() ? 'development' : 'production';
-  const kvSettings = kvConfig[environment];
-
-  // Add KV channel
-  const kvChannelConfig = {
-    type: 'kv' as const,
-    minLevel: isDevelopment() ? baseConfig.defaultLevel : 'debug' as LogLevel,
-    config: {
-      kv,
-      ...kvSettings,
-    },
-  };
-
-  const kvChannels = createChannelsFromConfig([kvChannelConfig]);
-
-  return {
-    ...baseConfig,
-    channels: [...baseConfig.channels, ...kvChannels],
-  };
-}
-
-/**
- * Create custom logger configuration with specific channel setup
- */
-export function createCustomLoggerConfig(
-  situationConfig: SituationConfig,
-  environment: 'development' | 'production' | 'default' = 'default',
-  situation?: string
-): LoggerConfig {
-  const channelConfigs = getChannelConfigForSituation(situationConfig, environment, situation);
-  const channels = createChannelsFromConfig(channelConfigs);
-
-  return {
-    defaultLevel: environment === 'production' ? 'warning' : 'info',
-    channels,
-    enableSanitization: true,
-  };
-}

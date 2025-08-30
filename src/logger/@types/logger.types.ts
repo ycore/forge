@@ -1,3 +1,6 @@
+import type { ConsoleChannelConfig } from '../channels/console-channel';
+import type { KVLogChannelConfig } from '../channels/kv-channel';
+
 // RFC 5424 log levels in descending order of severity
 export type LogLevel = "emergency" | "alert" | "critical" | "error" | "warning" | "notice" | "info" | "debug";
 
@@ -25,9 +28,40 @@ export interface LogEntry {
   [key: string]: unknown;
 }
 
-// Logger configuration
-export interface LoggerConfig {
+// Internal logger configuration (after processing)
+export interface InternalLoggerConfig {
   defaultLevel: LogLevel;
   channels: LogChannel[];
   enableSanitization: boolean;
+}
+
+// Channel initialization configuration
+export interface ChannelInitConfig {
+  environment: 'development' | 'production';
+  channel: string;
+  level: LogLevel | 'null'; // 'null' means disabled
+}
+
+// Channel definition with registry type and options
+export interface ChannelDefinition {
+  registry: 'console' | 'kv';
+  options: ConsoleChannelConfig | KVLogChannelConfig | Record<string, any>;
+}
+
+// Main logger configuration structure
+export interface LoggerConfig {
+  init: ChannelInitConfig[];
+  channels: {
+    [channelName: string]: ChannelDefinition;
+  };
+  defaults?: {
+    development?: {
+      defaultLevel?: LogLevel;
+      enableSanitization?: boolean;
+    };
+    production?: {
+      defaultLevel?: LogLevel;
+      enableSanitization?: boolean;
+    };
+  };
 }

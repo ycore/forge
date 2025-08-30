@@ -17,4 +17,3 @@ export function getRequestProperties(context: Readonly<unstable_RouterContextPro
 export function waitUntil<T>(context: Readonly<unstable_RouterContextProvider>, promise: Promise<T>) {
   return getExecutionContext(context).waitUntil(promise);
 }
-

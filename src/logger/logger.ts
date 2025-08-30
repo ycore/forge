@@ -1,12 +1,17 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
-import type { BaseLogParams, LogEntry, LoggerConfig, LogLevel, LogParams } from './@types/logger.types';
-import { createLoggerConfig, shouldLog } from './logger.config';
+import type { BaseLogParams, InternalLoggerConfig, LogEntry, LoggerConfig, LogLevel, LogParams } from './@types/logger.types';
+import { shouldLog } from './logger.config';
+import { createInternalLoggerConfig } from './logger.helpers';
 
 type LogMessage = string | BaseLogParams;
 type LogArgs = [LogMessage, ...any[]];
 
 // Global logger configuration
-let loggerConfig: LoggerConfig = createLoggerConfig();
+let loggerConfig: InternalLoggerConfig = {
+  defaultLevel: 'info',
+  channels: [],
+  enableSanitization: true,
+};
 
 /**
  * Sanitizes log parameters by removing sensitive fields
@@ -92,14 +97,14 @@ export const logger = {
   /**
    * Configure the logger with custom settings
    */
-  configure(config: Partial<LoggerConfig>) {
+  configure(config: Partial<InternalLoggerConfig>) {
     loggerConfig = { ...loggerConfig, ...config };
   },
 
   /**
    * Get current logger configuration
    */
-  getConfig(): LoggerConfig {
+  getConfig(): InternalLoggerConfig {
     return { ...loggerConfig };
   },
 
@@ -182,3 +187,47 @@ export const logger = {
     return this.warning(...args);
   },
 };
+
+// Track initialization state
+let isLoggerInitialized = false;
+
+/**
+ * Logger initialization options
+ */
+export interface InitLoggerOptions {
+  config: LoggerConfig;
+  store: KVNamespace;
+  environment?: 'development' | 'production';
+  startupCallback?: () => Promise<void>;
+}
+
+/**
+ * Initialize logger with named options
+ * Returns a boolean indicating whether initialization actually occurred (true) or was already done (false)
+ * Handles race conditions internally - safe to call multiple times
+ */
+export async function initLogger(options: InitLoggerOptions): Promise<boolean> {
+  if (isLoggerInitialized) {
+    return false;
+  }
+
+  const {
+    config,
+    store,
+    environment = 'production', // Default to production for safety
+    startupCallback,
+  } = options;
+
+  // Create internal logger config from declarative config
+  const finalConfig = createInternalLoggerConfig(config, environment, store);
+
+  logger.configure(finalConfig);
+  isLoggerInitialized = true;
+
+  // Execute optional startup logging callback
+  if (startupCallback) {
+    await startupCallback();
+  }
+
+  return true; // Initialization completed
+}

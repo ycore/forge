@@ -1,7 +1,6 @@
 import type { LogChannel, LogLevel } from '../@types/logger.types';
 import { type ConsoleChannelConfig, createConsoleChannel } from './console-channel';
 import { createKVLogChannel, type KVLogChannelConfig } from './kv-channel';
-import { createWebhookChannel, type WebhookChannelConfig } from './webhook-channel';
 
 /**
  * Configuration for different channel types
@@ -11,11 +10,6 @@ export type ChannelConfig = {
     type: 'console';
     minLevel: LogLevel;
     config?: ConsoleChannelConfig;
-  };
-  webhook: {
-    type: 'webhook';
-    minLevel: LogLevel;
-    config: WebhookChannelConfig;
   };
   kv: {
     type: 'kv';
@@ -34,9 +28,6 @@ export type ChannelFactory<T extends keyof ChannelConfig> = (minLevel: LogLevel,
  */
 export const ChannelRegistry: Record<keyof ChannelConfig, ChannelFactory<any>> = {
   console: (minLevel: LogLevel, config?: ConsoleChannelConfig) => createConsoleChannel(minLevel, config),
-
-  webhook: (minLevel: LogLevel, config: WebhookChannelConfig) => createWebhookChannel(config, minLevel),
-
   kv: (minLevel: LogLevel, config: KVLogChannelConfig) => createKVLogChannel(config, minLevel),
 };
 
