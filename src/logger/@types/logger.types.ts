@@ -2,7 +2,7 @@ import type { ConsoleChannelConfig } from '../channels/console-channel';
 import type { KVLogChannelConfig } from '../channels/kv-channel';
 
 // RFC 5424 log levels in descending order of severity
-export type LogLevel = "emergency" | "alert" | "critical" | "error" | "warning" | "notice" | "info" | "debug";
+export type LogLevel = 'emergency' | 'alert' | 'critical' | 'error' | 'warning' | 'notice' | 'info' | 'debug';
 
 export interface LogParams {
   event: string;
@@ -10,7 +10,7 @@ export interface LogParams {
   [key: string]: unknown;
 }
 
-export type BaseLogParams = Omit<LogParams, "level"> & { event: string };
+export type BaseLogParams = Omit<LogParams, 'level'> & { event: string };
 
 // Log channel configuration
 export interface LogChannel {

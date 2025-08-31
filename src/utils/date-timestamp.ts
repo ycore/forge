@@ -9,7 +9,7 @@ export function getCurrentTimestamp(): number {
  * Add time to current timestamp
  */
 export function addTimeToNow(timeInSeconds: number): number {
-  return getCurrentTimestamp() + (timeInSeconds * 1000);
+  return getCurrentTimestamp() + timeInSeconds * 1000;
 }
 
 /**

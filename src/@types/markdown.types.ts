@@ -78,7 +78,7 @@ export interface FolderManifest {
 
 export interface GlobalManifest {
   documents: MarkdownMeta[];
-  chunkedFolders?: string[];  // List of folders that have separate content chunks
+  chunkedFolders?: string[]; // List of folders that have separate content chunks
   _buildMode: 'single' | 'chunked';
 }
 

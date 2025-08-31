@@ -11,10 +11,7 @@ export interface ConsoleChannelConfig {
  * Console channel with environment-appropriate formatting
  * Outputs structured logs to the browser/Node.js console
  */
-export function createConsoleChannel(
-  minLevel: LogLevel,
-  config: ConsoleChannelConfig = {}
-): LogChannel {
+export function createConsoleChannel(minLevel: LogLevel, config: ConsoleChannelConfig = {}): LogChannel {
   const { prettyPrint = false, useLogLevelMethods = false } = config;
 
   return {
@@ -23,7 +20,7 @@ export function createConsoleChannel(
     enabled: true,
     output: (entry: LogEntry) => {
       const output = prettyPrint ? JSON.stringify(entry, null, 2) : JSON.stringify(entry);
-      
+
       if (useLogLevelMethods) {
         // Use appropriate console method based on log level
         switch (entry.level) {

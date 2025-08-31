@@ -597,7 +597,7 @@ async function execConcurrently<T>(items: T[], limit: number, handler: (item: T)
     executing.push(p);
 
     if (executing.length >= limit) {
-      await Promise.race(executing).catch(() => { });
+      await Promise.race(executing).catch(() => {});
       for (let i = executing.length - 1; i >= 0; i--) {
         try {
           await executing[i];

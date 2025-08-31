@@ -23,7 +23,6 @@ const folderContentCache: Map<string, Record<string, MarkdownContent>> = new Map
  * @returns Parsed JSON content
  */
 async function fetchContent<T>(url: string, assets: Fetcher): Promise<T> {
-
   // Use ASSETS binding for internal asset fetching
   const fetchFn = (input: RequestInfo | URL, init?: RequestInit) => assets.fetch(input, init);
 
@@ -36,7 +35,6 @@ async function fetchContent<T>(url: string, assets: Fetcher): Promise<T> {
     const gzResponse = await fetchFn(gzUrl);
 
     if (gzResponse.ok) {
-
       // Decompress using Web Streams API
       const compressedData = await gzResponse.arrayBuffer();
       const decompressedStream = new DecompressionStream('gzip');
@@ -45,7 +43,7 @@ async function fetchContent<T>(url: string, assets: Fetcher): Promise<T> {
           start(controller) {
             controller.enqueue(new Uint8Array(compressedData));
             controller.close();
-          }
+          },
         }).pipeThrough(decompressedStream)
       );
 
@@ -53,8 +51,6 @@ async function fetchContent<T>(url: string, assets: Fetcher): Promise<T> {
       const parsed = JSON.parse(decompressedText) as T;
       return parsed;
     }
-
-
   } catch (_compressionError) {
     // Compression attempt failed, fall back to uncompressed
   }
@@ -149,7 +145,6 @@ export async function getMarkdownContent(assets: Fetcher, request?: Request, pre
  * Load content for a specific folder (lazy loading)
  */
 async function loadFolderContent(folder: string, assets: Fetcher, request?: Request, prefix?: string): Promise<Record<string, MarkdownContent>> {
-
   // Check cache first
   if (folderContentCache.has(folder)) {
     const cachedContent = folderContentCache.get(folder);
@@ -169,7 +164,6 @@ async function loadFolderContent(folder: string, assets: Fetcher, request?: Requ
     return {};
   }
 }
-
 
 /**
  * Get a specific markdown document by slug
@@ -209,8 +203,6 @@ export function clearMarkdownCache(): void {
   folderContentCache.clear();
 }
 
-
-
 /**
  * Check if a document exists by slug
  */
@@ -225,6 +217,3 @@ export async function hasMarkdownDocument(slug: string, assets: Fetcher, request
   const content = await getMarkdownContent(assets, request, prefix);
   return slug in content;
 }
-
-
-

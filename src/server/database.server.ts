@@ -10,11 +10,7 @@ const AppDatabaseContext = unstable_createContext<DatabaseWithSchema<any> | null
 /**
  * Create a typed database connection from Cloudflare environment and binding config
  */
-export function bindDatabase<TSchema extends Record<string, any>>(
-  env: Cloudflare.Env,
-  binding: string,
-  schema: TSchema
-) {
+export function bindDatabase<TSchema extends Record<string, any>>(env: Cloudflare.Env, binding: string, schema: TSchema) {
   const d1Database = env[binding as keyof Cloudflare.Env] as D1Database;
   return drizzle(d1Database, { schema });
 }

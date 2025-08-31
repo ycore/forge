@@ -100,9 +100,8 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
   }, [fetcher.state, fetcher.data]);
 
   // Determine current document: preloaded document, fetched document, or none
-  const currentDoc = preloadedDocument && preloadedDoc === selectedDoc
-    ? { content: preloadedDocument.content, frontmatter: preloadedDocument.frontmatter, slug: selectedDoc }
-    : isDocContent(fetcher.data) ? fetcher.data : undefined;
+  const currentDoc =
+    preloadedDocument && preloadedDoc === selectedDoc ? { content: preloadedDocument.content, frontmatter: preloadedDocument.frontmatter, slug: selectedDoc } : isDocContent(fetcher.data) ? fetcher.data : undefined;
 
   return (
     <div className="min-h-screen bg-white transition-colors dark:bg-gray-900">
@@ -133,17 +132,17 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
                 <ThemeSwitch spriteUrl={spriteUrl}>
                   {themeContext
                     ? ({ theme }: { theme: Themes }) => (
-                      <button
-                        type="button"
-                        className="size-5 hover:animate-rotate"
-                        aria-label="theme switch"
-                        onClick={() => {
-                          themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
-                        }}
-                      >
-                        {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon url={spriteUrl} id="Moon" className="size-5" /> : <SpriteIcon url={spriteUrl} id="Sun" className="size-5" />}
-                      </button>
-                    )
+                        <button
+                          type="button"
+                          className="size-5 hover:animate-rotate"
+                          aria-label="theme switch"
+                          onClick={() => {
+                            themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
+                          }}
+                        >
+                          {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon url={spriteUrl} id="Moon" className="size-5" /> : <SpriteIcon url={spriteUrl} id="Sun" className="size-5" />}
+                        </button>
+                      )
                     : undefined}
                 </ThemeSwitch>
               )}

@@ -19,11 +19,7 @@ function isObject(item: unknown): item is Record<string, unknown> {
  */
 function mergeArrays<T>(target: T[], source: T[]): T[] {
   // Check if both arrays contain objects with 'name' property
-  const hasNamedObjects = target.every(item =>
-    isObject(item) && typeof (item as any).name === 'string'
-  ) && source.every(item =>
-    isObject(item) && typeof (item as any).name === 'string'
-  );
+  const hasNamedObjects = target.every(item => isObject(item) && typeof (item as any).name === 'string') && source.every(item => isObject(item) && typeof (item as any).name === 'string');
 
   if (hasNamedObjects) {
     // Merge by name property
