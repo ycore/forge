@@ -59,6 +59,9 @@
     "dist",
     "src"
   ],
+  "dependencies": {
+    "nanoid": "^5.1.5"
+  },
   "peerDependencies": {
     "clsx": ">= 2.1.0 < 3",
     "drizzle-orm": ">= 0.38.0 < 1",
@@ -76,6 +79,6 @@
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "ws:types": "bun ../../scripts/build-package.ts . --types-only && wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && wrangler types --include-runtime=false './src/@types/worker-configuration.d.ts' && tsc --noEmit"
+    "ws:types": "bun ../../scripts/build-package.ts . --types-only && wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && tsc --noEmit"
   }
 }
