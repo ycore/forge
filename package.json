@@ -9,48 +9,50 @@
   },
   "exports": {
     "./error": {
-      "import": "./dist/error/index.js",
-      "types": "./dist/error/index.d.ts",
-      "default": "./src/error/index.ts"
+      "import": "./src/error/index.ts",
+      "types": "./src/error/index.ts"
+    },
+    "./http": {
+      "import": "./src/http/index.ts",
+      "types": "./src/http/index.ts"
     },
     "./logger": {
-      "import": "./dist/logger/index.js",
-      "types": "./dist/logger/index.d.ts",
-      "default": "./src/logger/index.ts"
+      "import": "./src/logger/index.ts",
+      "types": "./src/logger/index.ts"
+    },
+    "./logger/plugin": {
+      "node": {
+        "import": "./src/logger/plugin/index.ts",
+        "types": "./src/logger/plugin/index.ts"
+      }
     },
     "./markdown": {
-      "import": "./dist/markdown/index.js",
-      "types": "./dist/markdown/index.d.ts",
-      "default": "./src/markdown/index.ts"
+      "import": "./src/markdown/index.ts",
+      "types": "./src/markdown/index.ts"
     },
     "./markdown/server": {
-      "import": "./dist/markdown/server/index.js",
-      "types": "./dist/markdown/server/index.d.ts",
-      "default": "./src/markdown/server/index.ts"
+      "import": "./src/markdown/server/index.ts",
+      "types": "./src/markdown/server/index.ts"
     },
     "./markdown/plugin": {
       "node": {
-        "import": "./dist/markdown/plugin/index.js",
-        "types": "./dist/markdown/plugin/index.d.ts",
-        "default": "./src/markdown/plugin/index.ts"
+        "import": "./src/markdown/plugin/index.ts",
+        "types": "./src/markdown/plugin/index.ts"
       }
     },
-    "./markdown/styles/markdown.css": "./dist/markdown/styles/markdown.css",
-    "./server": {
-      "import": "./dist/server/index.js",
-      "types": "./dist/server/index.d.ts",
-      "default": "./src/server/index.ts"
+    "./markdown/styles/markdown.css": "./src/markdown/styles/markdown.css",
+    "./services": {
+      "import": "./src/services/index.ts",
+      "types": "./src/services/index.ts"
     },
     "./utils": {
-      "import": "./dist/utils/index.js",
-      "types": "./dist/utils/index.d.ts",
-      "default": "./src/utils/index.ts"
+      "import": "./src/utils/index.ts",
+      "types": "./src/utils/index.ts"
     },
     "./vite/plugins": {
       "node": {
-        "import": "./dist/vite/plugins/index.js",
-        "types": "./dist/vite/plugins/index.d.ts",
-        "default": "./src/vite/plugins/index.ts"
+        "import": "./src/vite/plugins/index.ts",
+        "types": "./src/vite/plugins/index.ts"
       }
     },
     "./package.json": "./package.json"
@@ -79,6 +81,6 @@
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "ws:types": "bun ../../scripts/build-package.ts . --types-only && wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && tsc --noEmit"
+    "ws:types": "wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && tsc --noEmit"
   }
 }
