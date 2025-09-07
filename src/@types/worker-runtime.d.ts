@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Runtime types generated with workerd@1.20250816.0 2025-04-07 
+// Runtime types generated with workerd@1.20250823.0 2025-04-07 
 // Begin runtime types
 /*! *****************************************************************************
 Copyright (c) Cloudflare. All rights reserved.
@@ -6946,10 +6946,6 @@ declare namespace TailStream {
         readonly type: "hibernatableWebSocket";
         readonly info: HibernatableWebSocketEventInfoClose | HibernatableWebSocketEventInfoError | HibernatableWebSocketEventInfoMessage;
     }
-    interface Resume {
-        readonly type: "resume";
-        readonly attachment?: any;
-    }
     interface CustomEventInfo {
         readonly type: "custom";
     }
@@ -6977,16 +6973,13 @@ declare namespace TailStream {
         readonly scriptTags?: string[];
         readonly scriptVersion?: ScriptVersion;
         readonly trigger?: Trigger;
-        readonly info: FetchEventInfo | JsRpcEventInfo | ScheduledEventInfo | AlarmEventInfo | QueueEventInfo | EmailEventInfo | TraceEventInfo | HibernatableWebSocketEventInfo | Resume | CustomEventInfo;
+        readonly info: FetchEventInfo | JsRpcEventInfo | ScheduledEventInfo | AlarmEventInfo | QueueEventInfo | EmailEventInfo | TraceEventInfo | HibernatableWebSocketEventInfo | CustomEventInfo;
     }
     interface Outcome {
         readonly type: "outcome";
         readonly outcome: EventOutcome;
         readonly cpuTime: number;
         readonly wallTime: number;
-    }
-    interface Hibernate {
-        readonly type: "hibernate";
     }
     interface SpanOpen {
         readonly type: "spanOpen";
@@ -7017,13 +7010,6 @@ declare namespace TailStream {
         readonly type: "return";
         readonly info?: FetchResponseInfo;
     }
-    interface Link {
-        readonly type: "link";
-        readonly label?: string;
-        readonly traceId: string;
-        readonly invocationId: string;
-        readonly spanId: string;
-    }
     interface Attribute {
         readonly name: string;
         readonly value: string | string[] | boolean | boolean[] | number | number[] | bigint | bigint[];
@@ -7032,7 +7018,7 @@ declare namespace TailStream {
         readonly type: "attributes";
         readonly info: Attribute[];
     }
-    type EventType = Onset | Outcome | Hibernate | SpanOpen | SpanClose | DiagnosticChannelEvent | Exception | Log | Return | Link | Attributes;
+    type EventType = Onset | Outcome | SpanOpen | SpanClose | DiagnosticChannelEvent | Exception | Log | Return | Attributes;
     interface TailEvent<Event extends EventType> {
         readonly invocationId: string;
         readonly spanId: string;
@@ -7043,14 +7029,12 @@ declare namespace TailStream {
     type TailEventHandler<Event extends EventType = EventType> = (event: TailEvent<Event>) => void | Promise<void>;
     type TailEventHandlerObject = {
         outcome?: TailEventHandler<Outcome>;
-        hibernate?: TailEventHandler<Hibernate>;
         spanOpen?: TailEventHandler<SpanOpen>;
         spanClose?: TailEventHandler<SpanClose>;
         diagnosticChannel?: TailEventHandler<DiagnosticChannelEvent>;
         exception?: TailEventHandler<Exception>;
         log?: TailEventHandler<Log>;
         return?: TailEventHandler<Return>;
-        link?: TailEventHandler<Link>;
         attributes?: TailEventHandler<Attributes>;
     };
     type TailEventHandlerType = TailEventHandler | TailEventHandlerObject;

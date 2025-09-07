@@ -1,8 +1,38 @@
-import type { ConsoleChannelConfig } from '../channels/console-channel';
 import type { KVLogChannelConfig } from '../channels/kv-channel';
 
 // RFC 5424 log levels in descending order of severity
 export type LogLevel = 'emergency' | 'alert' | 'critical' | 'error' | 'warning' | 'notice' | 'info' | 'debug';
+
+// Console output format types
+export type ConsoleOutputFormat = 'raw' | 'json' | 'compact';
+
+// Console channel configuration
+export interface ConsoleChannelConfig {
+  /** Output format (default: 'raw') */
+  format?: ConsoleOutputFormat;
+  /** Custom console method for different log levels */
+  useLogLevelMethods?: boolean;
+}
+
+// Logger method arguments
+export type LogMessage = string | BaseLogParams;
+export type LogArgs = [LogMessage, ...any[]];
+
+// Logger interface
+export interface Logger {
+  configure(config: Partial<InternalLoggerConfig>): void;
+  getConfig(): InternalLoggerConfig;
+  log(params: LogParams): Promise<void>;
+  emergency(...args: LogArgs): Promise<void>;
+  alert(...args: LogArgs): Promise<void>;
+  critical(...args: LogArgs): Promise<void>;
+  error(...args: LogArgs): Promise<void>;
+  warning(...args: LogArgs): Promise<void>;
+  notice(...args: LogArgs): Promise<void>;
+  info(...args: LogArgs): Promise<void>;
+  debug(...args: LogArgs): Promise<void>;
+  warn(...args: LogArgs): Promise<void>;
+}
 
 export interface LogParams {
   event: string;
@@ -37,7 +67,7 @@ export interface InternalLoggerConfig {
 
 // Channel initialization configuration
 export interface ChannelInitConfig {
-  environment: 'development' | 'production';
+  production: boolean;
   channel: string;
   level: LogLevel | 'null'; // 'null' means disabled
 }

@@ -1,11 +1,4 @@
-import { dataWithToast } from '@ycore/componentry/impetus/toast';
-import { data, href, redirect } from 'react-router';
-
-import type { BaseError, ErrorCollection, FieldError, TypedResult } from './@types/error.types';
-
-interface ToastOptions {
-  toast: string;
-}
+import type { BaseError, ErrorCollection, FieldError } from './@types/error.types';
 
 /**
  * Internal helper to create BaseError objects from messages
@@ -15,94 +8,52 @@ function createBaseErrors(messages: string[]): BaseError[] {
 }
 
 /**
- * Create a BaseError from a message
+ * Create an ErrorCollection from a single message or array of messages
  */
-export function makeError(message: string): BaseError {
-  return { messages: [message] };
-}
-
-/**
- * Create an ErrorCollection from multiple messages
- */
-export function makeErrors(messages: string[]): ErrorCollection {
-  return createBaseErrors(messages);
+export function makeError(messages: string | string[]): ErrorCollection {
+  const messageArray = Array.isArray(messages) ? messages : [messages];
+  return createBaseErrors(messageArray);
 }
 
 /**
  * Create a FieldError with errors for a specific field
  */
-export function makeFieldError(field: string, messages: string[]): FieldError {
+export function makeFieldError(field: string, messages: string | string[]): FieldError {
   return {
-    [field]: createBaseErrors(messages),
+    [field]: makeError(messages),
   };
 }
 
 /**
- * Create a TypedResult with data
+ * Create a FieldError for form validation with optional global messages
  */
-export function returnSuccess<T, E = ErrorCollection>(data: T): TypedResult<T, E> {
-  return { data, errors: null };
-}
-
-/**
- * Create a TypedResult with errors
- */
-export function returnFailure<T, E = ErrorCollection>(errors: E): TypedResult<T, E> {
-  return { data: null, errors };
-}
-
-/**
- * Create a successful data response for loaders with optional status and headers
- */
-export function dataSuccess<T>(successData: T, options?: { status?: number; headers?: HeadersInit }) {
-  return data(buildResponseData(true, successData, null), { status: options?.status ?? 200, headers: options?.headers });
-}
-
-/**
- * Internal helper to build standardized response data structure
- */
-function buildResponseData<T, E>(success: boolean, data: T | null, errors: E | null) {
-  return { success, data, errors };
-}
-
-/**
- * Create a failure data response for loaders with optional redirect capability
- * If href is provided, throws a redirect instead of returning error data
- */
-export function dataFailure<E>(errors: E, options?: { status?: number; headers?: HeadersInit; href?: string }) {
-  if (options?.href) {
-    throw redirect(href(options.href), { status: options.status ?? 302, headers: options.headers });
+export function makeFormError(field: string, messages: string | string[], globalMessages?: string | string[]): FieldError {
+  const fieldError: FieldError = { [field]: makeError(messages) };
+  if (globalMessages) {
+    fieldError._global = makeError(globalMessages);
   }
-
-  return data(buildResponseData(false, null, errors), { status: options?.status ?? 400, headers: options?.headers });
+  return fieldError;
 }
 
 /**
- * Create a successful action response with standardized success format
+ * Create a service-level error (non-field specific)
  */
-export function actionSuccess<T>(successData: T, options?: { status?: number; headers?: HeadersInit } & Partial<ToastOptions>) {
-  const responseData = buildResponseData(true, successData, null);
-
-  if (options?.toast) {
-    return dataWithToast(responseData, { message: options.toast, type: 'success' });
-  }
-
-  return data(responseData, { status: options?.status ?? 200, headers: options?.headers });
+export function makeServiceError(messages: string | string[]): FieldError {
+  return { _global: makeError(messages) };
 }
 
 /**
- * Create a failure action response, delegates to dataFailure for consistent error handling
+ * Handle try-catch errors and create proper ErrorCollection
  */
-export function actionFailure<E>(errors: E, options?: { status?: number; headers?: HeadersInit; href?: string } & Partial<ToastOptions>) {
-  if (options?.href) {
-    throw redirect(href(options.href), { status: options.status ?? 302, headers: options.headers });
-  }
+export function makeTryCatchError(error: unknown, context?: string): ErrorCollection {
+  const message = error instanceof Error ? error.message : String(error);
+  const fullMessage = context ? `${context}: ${message}` : message;
+  return makeError(fullMessage);
+}
 
-  const responseData = buildResponseData(false, null, errors);
-
-  if (options?.toast) {
-    return dataWithToast(responseData, { message: options.toast, type: 'error' });
-  }
-
-  return data(responseData, { status: options?.status ?? 400, headers: options?.headers });
+/**
+ * Create a general error for unexpected failures
+ */
+export function makeGeneralError(message = 'An unexpected error occurred'): FieldError {
+  return { general: makeError(message) };
 }

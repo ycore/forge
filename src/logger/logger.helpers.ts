@@ -5,9 +5,9 @@ import { getChannelOptions, getLoggerDefaults } from './logger.config';
 /**
  * Create internal logger configuration from declarative config
  */
-export function createInternalLoggerConfig(config: LoggerConfig, environment: 'development' | 'production', kv?: KVNamespace): InternalLoggerConfig {
+export function createInternalLoggerConfig(config: LoggerConfig, production: boolean, kv?: KVNamespace): InternalLoggerConfig {
   // Filter init configs for current environment
-  const relevantInits = config.init.filter((init: ChannelInitConfig) => init.environment === environment && init.level !== 'null');
+  const relevantInits = config.init.filter((init: ChannelInitConfig) => init.production === production && init.level !== 'null');
 
   // Create channels based on filtered init configs
   const channels = relevantInits.map(init => {
@@ -22,17 +22,13 @@ export function createInternalLoggerConfig(config: LoggerConfig, environment: 'd
     }
 
     // Get environment-appropriate options using config logic
-    const options = getChannelOptions(channelDef.registry, environment, channelDef.options, kv);
+    const options = getChannelOptions(channelDef.registry, production, channelDef.options, kv);
 
     return factory(init.level as LogLevel, options);
   });
 
   // Get environment defaults from config
-  const { defaultLevel, enableSanitization } = getLoggerDefaults(config, environment);
+  const { defaultLevel, enableSanitization } = getLoggerDefaults(config, production);
 
-  return {
-    defaultLevel,
-    channels,
-    enableSanitization,
-  };
+  return { defaultLevel, channels, enableSanitization };
 }

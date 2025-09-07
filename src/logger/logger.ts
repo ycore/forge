@@ -1,10 +1,12 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
-import type { BaseLogParams, InternalLoggerConfig, LogEntry, LoggerConfig, LogLevel, LogParams } from './@types/logger.types';
+import type { BaseLogParams, InternalLoggerConfig, LogArgs, LogEntry, Logger, LoggerConfig, LogLevel, LogParams } from './@types/logger.types';
 import { shouldLog } from './logger.config';
 import { createInternalLoggerConfig } from './logger.helpers';
 
-type LogMessage = string | BaseLogParams;
-type LogArgs = [LogMessage, ...any[]];
+export interface LoggerState {
+  initialized: boolean;
+  wasInitializedHere?: boolean;
+}
 
 // Global logger configuration
 let loggerConfig: InternalLoggerConfig = {
@@ -79,6 +81,9 @@ async function writeToChannels(entry: LogEntry): Promise<void> {
   await Promise.allSettled(writePromises);
 }
 
+// Production optimizations are handled by the Vite logger plugin
+// These runtime checks will be replaced with static values during build
+
 /**
  * Enhanced Structured Logging Utility with Multi-Channel Support
  *
@@ -88,12 +93,13 @@ async function writeToChannels(entry: LogEntry): Promise<void> {
  * - Environment-specific configuration
  * - Flexible API supporting both structured objects and diary-style strings
  * - Security sanitization for sensitive data
+ * - Production build optimization with dead code elimination
  * - Optimized for Cloudflare Workers deployment
  *
  * @see {@link https://developers.cloudflare.com/workers/observability/logs/workers-logs/}
  * @see {@link https://tools.ietf.org/html/rfc5424}
  */
-export const logger = {
+export const logger: Logger = {
   /**
    * Configure the logger with custom settings
    */
@@ -197,7 +203,7 @@ let isLoggerInitialized = false;
 export interface InitLoggerOptions {
   config: LoggerConfig;
   store: KVNamespace;
-  environment?: 'development' | 'production';
+  production: boolean;
   startupCallback?: () => Promise<void>;
 }
 
@@ -214,12 +220,12 @@ export async function initLogger(options: InitLoggerOptions): Promise<boolean> {
   const {
     config,
     store,
-    environment = 'production', // Default to production for safety
+    production = true, // Default to production for safety
     startupCallback,
   } = options;
 
   // Create internal logger config from declarative config
-  const finalConfig = createInternalLoggerConfig(config, environment, store);
+  const finalConfig = createInternalLoggerConfig(config, production, store);
 
   logger.configure(finalConfig);
   isLoggerInitialized = true;

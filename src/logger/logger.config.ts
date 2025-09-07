@@ -22,17 +22,18 @@ export function shouldLog(level: LogLevel, minLevel: LogLevel): boolean {
 /**
  * Get environment-specific channel options
  */
-export function getChannelOptions(registry: 'console' | 'kv', environment: 'development' | 'production', baseOptions: Record<string, any> = {}, kv?: KVNamespace): Record<string, any> {
-  let options = { ...baseOptions };
-
+export function getChannelOptions(registry: 'console' | 'kv', production: boolean, baseOptions: Record<string, any> = {}, kv?: KVNamespace): Record<string, any> {
   // Console channel environment-specific defaults
   if (registry === 'console') {
-    options = {
-      prettyPrint: environment === 'development',
-      useLogLevelMethods: environment === 'development',
-      ...options,
+    const envDefaults = {
+      format: production ? 'raw' : 'json',
+      useLogLevelMethods: !production,
     };
+    // Explicit options override environment defaults
+    return { ...envDefaults, ...baseOptions };
   }
+
+  let options = { ...baseOptions };
 
   // KV channel - inject KV namespace
   if (registry === 'kv' && kv) {
@@ -45,11 +46,11 @@ export function getChannelOptions(registry: 'console' | 'kv', environment: 'deve
 /**
  * Get environment-specific logger defaults
  */
-export function getLoggerDefaults(config: LoggerConfig, environment: 'development' | 'production'): { defaultLevel: LogLevel; enableSanitization: boolean } {
-  const defaults = config.defaults?.[environment];
+export function getLoggerDefaults(config: LoggerConfig, production: boolean): { defaultLevel: LogLevel; enableSanitization: boolean } {
+  const defaults = production ? config.defaults?.production : config.defaults?.development;
 
   return {
-    defaultLevel: defaults?.defaultLevel || (environment === 'production' ? 'warning' : 'info'),
+    defaultLevel: defaults?.defaultLevel || (production ? 'warning' : 'info'),
     enableSanitization: defaults?.enableSanitization ?? true,
   };
 }
@@ -60,22 +61,22 @@ export function getLoggerDefaults(config: LoggerConfig, environment: 'developmen
 export const defaultLoggerConfig: LoggerConfig = {
   init: [
     {
-      environment: 'development',
+      production: false,
       channel: 'console',
       level: 'debug',
     },
     {
-      environment: 'production',
+      production: false,
       channel: 'console',
       level: 'warning',
     },
     {
-      environment: 'development',
+      production: false,
       channel: 'kv',
       level: 'info',
     },
     {
-      environment: 'production',
+      production: true,
       channel: 'kv',
       level: 'warning',
     },

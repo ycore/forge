@@ -1,8 +1,9 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
 import type { Params } from 'react-router';
 import { type BaseSchema, safeParse } from 'valibot';
-import { returnFailure, returnSuccess } from '../error/error-helpers';
+
 import { parseIssues } from '../error/error-transformer';
+import { returnFailure, returnSuccess } from '../http/return-helpers';
 import type { ValidationResult } from './@types/validate-helpers.types';
 
 async function validate<S extends BaseSchema<any, any, any>>(schema: S, input: any): Promise<ValidationResult<S>> {

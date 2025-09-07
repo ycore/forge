@@ -2,10 +2,17 @@ import { drizzle } from 'drizzle-orm/d1';
 import { unstable_createContext, type unstable_RouterContextProvider } from 'react-router';
 
 // Type for the database instance with schema
-type DatabaseWithSchema<TSchema extends Record<string, any>> = ReturnType<typeof drizzle<TSchema>>;
+type DatabaseWithSchema<TSchema extends Record<string, any>> =
+  ReturnType<typeof drizzle<TSchema>>;
 
-// Create typed database context for app use
-const AppDatabaseContext = unstable_createContext<DatabaseWithSchema<any> | null>(null);
+// Database configuration interface
+interface DatabaseConfig<TSchema extends Record<string, any>> {
+  binding: string;
+  schema: TSchema;
+}
+
+// Create typed database context
+export const DatabaseContext = unstable_createContext<DatabaseWithSchema<any> | null>(null);
 
 /**
  * Create a typed database connection from Cloudflare environment and binding config
@@ -16,19 +23,24 @@ export function bindDatabase<TSchema extends Record<string, any>>(env: Cloudflar
 }
 
 /**
+ * Initialize database and set it in the router context
+ * Consolidates database binding and context setting in one call
+ */
+export function initDatabase<TSchema extends Record<string, any>>(context: unstable_RouterContextProvider, env: Cloudflare.Env, config: DatabaseConfig<TSchema>) {
+  const db = bindDatabase(env, config.binding, config.schema);
+  context.set(DatabaseContext, db);
+  return db;
+}
+
+/**
  * Simple database getter function following getBindings pattern
  * Extracts the typed database instance from React Router context
  * @throws Error if database context is not set
  */
 export function getDatabase(context: Readonly<unstable_RouterContextProvider>) {
-  const db = context.get(AppDatabaseContext);
+  const db = context.get(DatabaseContext);
   if (!db) {
     throw new Error('Database context not found. Make sure to bind database in your worker entry point.');
   }
   return db;
 }
-
-/**
- * Database context for app use
- */
-export { AppDatabaseContext as DatabaseContext };

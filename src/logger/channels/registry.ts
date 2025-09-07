@@ -1,5 +1,5 @@
-import type { LogChannel, LogLevel } from '../@types/logger.types';
-import { type ConsoleChannelConfig, createConsoleChannel } from './console-channel';
+import type { ConsoleChannelConfig, LogChannel, LogLevel } from '../@types/logger.types';
+import { createConsoleChannel } from './console-channel';
 import { createKVLogChannel, type KVLogChannelConfig } from './kv-channel';
 
 /**
@@ -63,14 +63,15 @@ export function createChannelsFromConfig(configs: Array<ChannelConfig[keyof Chan
 /**
  * Gets appropriate channel configuration based on environment and situation
  */
-export function getChannelConfigForSituation(situationConfig: SituationConfig, environment: 'development' | 'production' | 'default' = 'default', situation?: string): Array<ChannelConfig[keyof ChannelConfig]> {
+export function getChannelConfigForSituation(situationConfig: SituationConfig, production: boolean, situation?: string): Array<ChannelConfig[keyof ChannelConfig]> {
   // Check for specific situation first
   if (situation && situationConfig.situations?.[situation]) {
     return situationConfig.situations[situation];
   }
 
   // Check for environment-specific config
-  if (environment !== 'default' && situationConfig[environment]) {
+  const environment = production ? 'production' : 'development';
+  if (situationConfig[environment]) {
     return situationConfig[environment];
   }
 
