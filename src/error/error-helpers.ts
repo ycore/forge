@@ -1,3 +1,5 @@
+import type { TypedResult } from '../http/@types/http.types';
+import { returnFailure, returnSuccess } from '../http/return-helpers';
 import type { BaseError, ErrorCollection, FieldError } from './@types/error.types';
 
 /**
@@ -56,4 +58,67 @@ export function makeTryCatchError(error: unknown, context?: string): ErrorCollec
  */
 export function makeGeneralError(message = 'An unexpected error occurred'): FieldError {
   return { general: makeError(message) };
+}
+
+/**
+ * Wraps any function (sync or async) in a Result Object pattern
+ * Provides full type safety for both success and error cases
+ * 
+ * @template T The expected return type on success
+ * @template E The error type (defaults to ErrorCollection)
+ * @param fn The function to wrap (can be sync or async)
+ * @param errorTransform Optional function to transform caught errors to type E
+ * @returns Promise<TypedResult<T, E>> Always returns a Result Object
+ * 
+ * @example
+ * // Wrap a third-party API call
+ * const result = await wrapResult(
+ *   () => fetch(url).then(r => r.json()),
+ *   (error) => makeTryCatchError(error, 'API call failed')
+ * );
+ * 
+ * @example
+ * // Wrap a sync function that might throw
+ * const result = await wrapResult(
+ *   () => JSON.parse(jsonString),
+ *   (error) => makeError('Invalid JSON')
+ * );
+ */
+export async function wrapResult<T, E = ErrorCollection>(
+  fn: () => T | Promise<T>,
+  errorTransform?: (error: unknown) => E
+): Promise<TypedResult<T, E>> {
+  try {
+    const result = await fn();
+    return returnSuccess<T, E>(result);
+  } catch (error) {
+    const errors = errorTransform 
+      ? errorTransform(error)
+      : makeTryCatchError(error) as E;
+    return returnFailure<T, E>(errors);
+  }
+}
+
+/**
+ * Wraps a value that might be null/undefined into a Result Object
+ * Useful for converting nullable returns into explicit Result Objects
+ * 
+ * @template T The expected value type
+ * @template E The error type (defaults to ErrorCollection)
+ * @param value The value to wrap
+ * @param errorMessage Error message if value is null/undefined
+ * @returns TypedResult<T, E>
+ * 
+ * @example
+ * const user = await db.findUser(id);
+ * return wrapNullable(user, 'User not found');
+ */
+export function wrapNullable<T, E = ErrorCollection>(
+  value: T | null | undefined,
+  errorMessage: string
+): TypedResult<NonNullable<T>, E> {
+  if (value === null || value === undefined) {
+    return returnFailure<NonNullable<T>, E>(makeError(errorMessage) as E);
+  }
+  return returnSuccess<NonNullable<T>, E>(value as NonNullable<T>);
 }

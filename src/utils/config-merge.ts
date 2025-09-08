@@ -17,9 +17,14 @@ function isObject(item: unknown): item is Record<string, unknown> {
  * For arrays of objects with 'name' property, merge by name
  * Otherwise, replace the array
  */
+// Type guard for objects with name property
+function hasNameProperty(obj: unknown): obj is { name: string } {
+  return isObject(obj) && typeof (obj as Record<string, unknown>).name === 'string';
+}
+
 function mergeArrays<T>(target: T[], source: T[]): T[] {
   // Check if both arrays contain objects with 'name' property
-  const hasNamedObjects = target.every(item => isObject(item) && typeof (item as any).name === 'string') && source.every(item => isObject(item) && typeof (item as any).name === 'string');
+  const hasNamedObjects = target.every(hasNameProperty) && source.every(hasNameProperty);
 
   if (hasNamedObjects) {
     // Merge by name property
@@ -28,12 +33,15 @@ function mergeArrays<T>(target: T[], source: T[]): T[] {
 
     // Create map of existing items by name
     result.forEach((item, index) => {
-      resultMap.set((item as any).name, index);
+      if (hasNameProperty(item)) {
+        resultMap.set(item.name, index);
+      }
     });
 
     // Merge or add source items
     for (const sourceItem of source) {
-      const name = (sourceItem as any).name;
+      if (!hasNameProperty(sourceItem)) continue;
+      const name = sourceItem.name;
       const existingIndex = resultMap.get(name);
 
       if (existingIndex !== undefined) {
@@ -76,13 +84,13 @@ export function deepMerge<T extends object>(target: T, ...sources: Array<DeepPar
 
       if (Array.isArray(sourceValue) && Array.isArray(targetValue)) {
         // Intelligently merge arrays
-        (result as any)[key] = mergeArrays(targetValue, sourceValue);
+        (result as Record<string, unknown>)[key] = mergeArrays(targetValue, sourceValue);
       } else if (isObject(sourceValue) && isObject(targetValue)) {
         // Recursively merge nested objects
-        (result as any)[key] = deepMerge(targetValue as object, sourceValue as DeepPartial<object>);
+        (result as Record<string, unknown>)[key] = deepMerge(targetValue as object, sourceValue as DeepPartial<object>);
       } else {
         // Direct assignment for primitives, dates, null, etc.
-        (result as any)[key] = sourceValue;
+        (result as Record<string, unknown>)[key] = sourceValue;
       }
     }
   }

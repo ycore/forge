@@ -115,7 +115,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
               <h2 className="font-semibold text-gray-900 text-lg dark:text-white">Documentation</h2>
               <div>
                 <button type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="rounded-md p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                  <SpriteIcon<IconName> url={spriteUrl} id="ChevronLeft" className="h-5 w-5" />
+                  <SpriteIcon<IconName> url={spriteUrl} iconId="ChevronLeft" className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -124,7 +124,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
             </nav>
             <div className="fixed right-4 bottom-4 z-10 flex items-center justify-between gap-x-4">
               <Link href="/">
-                <SpriteIcon<IconName> url={spriteUrl} id="House" className="size-5 text-accent-foreground" viewBox="0 0 24 24" />
+                <SpriteIcon<IconName> url={spriteUrl} iconId="House" className="size-5 text-accent-foreground" viewBox="0 0 24 24" />
               </Link>
               {!mounted ? (
                 <div className="size-5" />
@@ -132,17 +132,17 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
                 <ThemeSwitch spriteUrl={spriteUrl}>
                   {themeContext
                     ? ({ theme }: { theme: Themes }) => (
-                        <button
-                          type="button"
-                          className="size-5 hover:animate-rotate"
-                          aria-label="theme switch"
-                          onClick={() => {
-                            themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
-                          }}
-                        >
-                          {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon url={spriteUrl} id="Moon" className="size-5" /> : <SpriteIcon url={spriteUrl} id="Sun" className="size-5" />}
-                        </button>
-                      )
+                      <button
+                        type="button"
+                        className="size-5 hover:animate-rotate"
+                        aria-label="theme switch"
+                        onClick={() => {
+                          themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
+                        }}
+                      >
+                        {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon url={spriteUrl} iconId="Moon" className="size-5" /> : <SpriteIcon url={spriteUrl} iconId="Sun" className="size-5" />}
+                      </button>
+                    )
                     : undefined}
                 </ThemeSwitch>
               )}
@@ -156,7 +156,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
           onClick={() => setSidebarCollapsed(false)}
           className={`fixed top-4 left-4 z-30 rounded-md border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-opacity duration-300 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-200 ${sidebarCollapsed ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         >
-          <SpriteIcon<IconName> url={spriteUrl} id="EllipsisVertical" className="h-5 w-5" />
+          <SpriteIcon<IconName> url={spriteUrl} iconId="EllipsisVertical" className="h-5 w-5" />
         </button>
 
         {/* Main content */}
@@ -166,7 +166,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
               <div className="flex h-96 items-center justify-center">
                 <div className="text-center">
                   <div className="mb-4 text-gray-400 dark:text-gray-500">
-                    <SpriteIcon<IconName> url={spriteUrl} id="CircleAlert" className="h-8 w-8" />
+                    <SpriteIcon<IconName> url={spriteUrl} iconId="CircleAlert" className="h-8 w-8" />
                   </div>
                   <h3 className="mb-2 font-medium text-gray-900 text-lg dark:text-white">Select a document</h3>
                   <p className="text-gray-500 dark:text-gray-400">Choose a document from the sidebar to view its content.</p>
@@ -203,7 +203,7 @@ const DocumentNotFound = memo(({ spriteUrl }: { spriteUrl: string }) => (
   <div className="flex h-96 items-center justify-center">
     <div className="text-center">
       <div className="mb-4 text-red-400 dark:text-red-500">
-        <SpriteIcon<IconName> url={spriteUrl} id="CircleAlert" className="mx-auto h-8 w-8" />
+        <SpriteIcon<IconName> url={spriteUrl} iconId="CircleAlert" className="mx-auto h-8 w-8" />
       </div>
       <h3 className="mb-2 font-medium text-gray-900 text-lg dark:text-white">Document not found</h3>
       <p className="text-gray-500 dark:text-gray-400">The selected document could not be loaded.</p>
@@ -211,6 +211,7 @@ const DocumentNotFound = memo(({ spriteUrl }: { spriteUrl: string }) => (
   </div>
 ));
 
+// biome-ignore lint/suspicious/noExplicitAny: acceptable
 const DocumentHeader = memo(({ frontmatter }: { frontmatter: Record<string, any> }) => (
   <header className="mb-8">
     {frontmatter.title && <h1 className="mb-4 font-bold font-serif text-3xl text-gray-900 dark:text-white">{frontmatter.title}</h1>}
@@ -258,7 +259,7 @@ const DocList = memo(({ docs, selectedDoc, onDocSelect, spriteUrl }: { docs: Enh
               <div className="relative">
                 <input type="checkbox" id={folderId} className="peer hidden" defaultChecked={true} />
                 <label htmlFor={folderId} className="flex w-full cursor-pointer items-center px-3 py-2 text-left text-gray-600 text-sm transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50">
-                  <SpriteIcon<IconName> url={spriteUrl} id="ChevronRight" className="mr-2 h-3 w-3 transition-transform duration-200 peer-checked:rotate-90" />
+                  <SpriteIcon<IconName> url={spriteUrl} iconId="ChevronRight" className="mr-2 h-3 w-3 transition-transform duration-200 peer-checked:rotate-90" />
                   <span className="font-medium capitalize">{folder}</span>
                 </label>
 

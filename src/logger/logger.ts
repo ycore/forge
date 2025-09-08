@@ -63,6 +63,7 @@ function createLogEntry(params: LogParams): LogEntry {
 
 /**
  * Writes log entry to all enabled channels that meet the level threshold
+ * Logging failures are silently ignored to prevent disrupting application flow
  */
 async function writeToChannels(entry: LogEntry): Promise<void> {
   const writePromises = loggerConfig.channels
@@ -71,9 +72,8 @@ async function writeToChannels(entry: LogEntry): Promise<void> {
       try {
         const result = channel.output(entry);
         return result instanceof Promise ? result : Promise.resolve();
-      } catch (error) {
-        // Prevent logging failures from breaking the application
-        console.error(`Failed to write to channel ${channel.name}:`, error);
+      } catch (_error) {
+        // Silently ignore logging failures to prevent disrupting application flow
         return Promise.resolve();
       }
     });
@@ -95,6 +95,12 @@ async function writeToChannels(entry: LogEntry): Promise<void> {
  * - Security sanitization for sensitive data
  * - Production build optimization with dead code elimination
  * - Optimized for Cloudflare Workers deployment
+ * - **Error-safe**: Never throws or contributes to error flow - logging failures are silently ignored
+ *
+ * Usage patterns:
+ * - Critical logging: `await logger.error(...)` - ensures completion
+ * - Non-critical logging: `logger.debug(...)` - fire-and-forget
+ * - All methods return Promise<void> but never throw or reject
  *
  * @see {@link https://developers.cloudflare.com/workers/observability/logs/workers-logs/}
  * @see {@link https://tools.ietf.org/html/rfc5424}
@@ -237,3 +243,20 @@ export async function initLogger(options: InitLoggerOptions): Promise<boolean> {
 
   return true; // Initialization completed
 }
+
+/**
+ * Check if logger has been initialized
+ */
+export function isInitialized(): boolean {
+  return isLoggerInitialized;
+}
+
+/**
+ * Require logger to be initialized, throws if not
+ */
+export function requireInitialized(): void {
+  if (!isLoggerInitialized) {
+    throw new Error('Logger must be initialized before use. Call initLogger() in entry.worker.ts first.');
+  }
+}
+

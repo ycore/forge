@@ -362,7 +362,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
     }
   }
 
-  async function writeFolderFiles(folder: string, manifest: MarkdownMeta[], content: FolderContentChunk) {
+  async function writeFolderFiles(folder: string, _manifest: MarkdownMeta[], content: FolderContentChunk) {
     try {
       const dir = path.dirname(getAssetPath('dummy'));
       await mkdir(dir, { recursive: true });

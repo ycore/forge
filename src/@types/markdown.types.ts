@@ -19,7 +19,7 @@ export interface MarkdownMeta {
   // Build metadata for caching
   _mtime?: number;
   _size?: number;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface MarkdownContent {
@@ -31,7 +31,7 @@ export interface MarkdownPageProps {
   loaderData: EnhancedMarkdownMeta[] | MarkdownPageData;
   spriteUrl: string;
   themeContext?: ThemeContext;
-  context?: any;
+  context?: Record<string, unknown>;
 }
 
 export interface MarkdownPageData {
@@ -52,7 +52,7 @@ export interface EnhancedMarkdownMeta extends MarkdownMeta {
 
 export interface DocContent {
   content: string;
-  frontmatter: Record<string, any>;
+  frontmatter: Record<string, unknown>;
   slug: string;
 }
 
@@ -84,7 +84,7 @@ export interface GlobalManifest {
 
 export interface ProcessingResult {
   manifest: MarkdownMeta[];
-  content: Record<string, any>;
+  content: Record<string, MarkdownContent>;
   processedCount: number;
   errorCount: number;
 }
@@ -117,5 +117,5 @@ export interface ServeOptions {
 
 export interface MarkdownLoaderArgs {
   request: Request;
-  context?: unstable_RouterContextProvider;
+  context?: Readonly<unstable_RouterContextProvider>;
 }

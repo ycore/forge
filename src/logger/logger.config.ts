@@ -22,7 +22,7 @@ export function shouldLog(level: LogLevel, minLevel: LogLevel): boolean {
 /**
  * Get environment-specific channel options
  */
-export function getChannelOptions(registry: 'console' | 'kv', production: boolean, baseOptions: Record<string, any> = {}, kv?: KVNamespace): Record<string, any> {
+export function getChannelOptions(registry: 'console' | 'kv', production: boolean, baseOptions: Record<string, unknown> = {}, kv?: KVNamespace): Record<string, unknown> {
   // Console channel environment-specific defaults
   if (registry === 'console') {
     const envDefaults = {

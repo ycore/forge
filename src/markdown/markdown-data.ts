@@ -88,7 +88,7 @@ async function getGlobalManifest(assets: Fetcher, request?: Request, prefix?: st
     const globalManifest = await fetchContent<GlobalManifest>(manifestUrl, assets);
     globalManifestCache = globalManifest;
     return globalManifest;
-  } catch (error) {
+  } catch (_error) {
     return { documents: [], _buildMode: 'single' };
   }
 }
@@ -160,7 +160,7 @@ async function loadFolderContent(folder: string, assets: Fetcher, request?: Requ
     const content = await fetchContent<Record<string, MarkdownContent>>(contentUrl, assets);
     folderContentCache.set(folder, content);
     return content;
-  } catch (error) {
+  } catch (_error) {
     return {};
   }
 }

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/noUnusedVariables: WIP */
 import type { Plugin } from 'vite';
 
 export interface LoggerPluginOptions {
@@ -6,25 +7,25 @@ export interface LoggerPluginOptions {
    * @default process.env.NODE_ENV === 'production'
    */
   production?: boolean;
-  
+
   /**
    * Log levels to strip in production
    * @default ['debug', 'info', 'notice']
    */
   stripLevels?: string[];
-  
+
   /**
-   * Log levels to keep in production  
+   * Log levels to keep in production
    * @default ['warning', 'error', 'critical', 'alert', 'emergency']
    */
   keepLevels?: string[];
-  
+
   /**
    * Whether to replace calls with void 0 or remove entirely
    * @default 'remove'
    */
   replacementStrategy?: 'remove' | 'noop';
-  
+
   /**
    * Logger import patterns to optimize
    * @default ['@ycore/forge/logger', './logger', '../logger']
@@ -38,7 +39,7 @@ const DEFAULT_LOGGER_PATTERNS = ['@ycore/forge/logger', './logger', '../logger']
 
 /**
  * Vite plugin for optimizing logger calls in production builds
- * 
+ *
  * Features:
  * - Strips debug/info/notice calls in production
  * - Preserves error/warning/critical calls for monitoring
@@ -56,12 +57,12 @@ export function loggerOptimization(options: LoggerPluginOptions = {}): Plugin {
   } = options;
 
   const isProd = production;
-  const shouldOptimize = isProd;
+  const _shouldOptimize = isProd;
 
   return {
     name: 'logger-optimization',
     enforce: 'pre',
-    
+
     config(config) {
       // Optimize esbuild for better dead code elimination
       if (isProd) {
@@ -70,7 +71,7 @@ export function loggerOptimization(options: LoggerPluginOptions = {}): Plugin {
           drop: ['debugger'],
           pure: [
             'logger.debug',
-            'logger.info', 
+            'logger.info',
             'logger.notice',
             // Also handle destructured imports
             ...stripLevels.map(level => `${level}`),

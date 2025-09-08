@@ -36,7 +36,7 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
   if (!prefix) {
     prefix = derivePrefix();
   }
-  const packageCache = new Map<string, any>();
+  const packageCache = new Map<string, { exports?: Record<string, unknown>; [key: string]: unknown }>();
   const discoveredWorkspacePackages = new Set<string>();
 
   function getPackageExports(pkgName: string) {
@@ -50,7 +50,7 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
       const exports = packageJson.exports || {};
       packageCache.set(pkgName, exports);
       return exports;
-    } catch (e) {
+    } catch (_e) {
       packageCache.set(pkgName, {});
       return {};
     }
@@ -125,11 +125,11 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
               }
             }
           }
-        } catch (e) {
+        } catch (_e) {
           // Skip if package.json doesn't exist or is invalid
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Fallback to empty array if discovery fails
     }
 

@@ -28,7 +28,7 @@ export function transformError(error: unknown): BaseError {
 /**
  * Parse valibot validation issues into FieldError format
  */
-export function parseIssues(issues: any[]): FieldError {
+export function parseIssues(issues: unknown[]): FieldError {
   if (!issues?.length) {
     return {
       _global: [{ messages: ['Validation failed'] }],

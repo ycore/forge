@@ -128,7 +128,7 @@ export async function getLogsFromKV(
     countKey?: string;
   } = {}
 ): Promise<LogEntry[]> {
-  const { limit = 100, keyPrefix = 'log:', countKey = 'log_count' } = options;
+  const { limit = 100, keyPrefix = 'log:' } = options;
 
   try {
     // List all log keys

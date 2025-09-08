@@ -16,7 +16,7 @@ export interface ConsoleChannelConfig {
 
 // Logger method arguments
 export type LogMessage = string | BaseLogParams;
-export type LogArgs = [LogMessage, ...any[]];
+export type LogArgs = [LogMessage, ...unknown[]];
 
 // Logger interface
 export interface Logger {
@@ -75,7 +75,7 @@ export interface ChannelInitConfig {
 // Channel definition with registry type and options
 export interface ChannelDefinition {
   registry: 'console' | 'kv';
-  options: ConsoleChannelConfig | KVLogChannelConfig | Record<string, any>;
+  options: ConsoleChannelConfig | KVLogChannelConfig | Record<string, unknown>;
 }
 
 // Main logger configuration structure

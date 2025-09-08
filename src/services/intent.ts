@@ -41,9 +41,9 @@ export async function getIntent<T extends readonly string[]>(requestOrFormData: 
   });
 
   // Convert FormData to object for validation
-  const formObject: Record<string, any> = {};
+  const formObject: Record<string, FormDataEntryValue> = {};
   formData.forEach((value, key) => {
-    formObject[key] = value instanceof File ? value : String(value);
+    formObject[key] = value;
   });
 
   // Validate using valibot
