@@ -8,7 +8,7 @@ import DOMPurify from 'isomorphic-dompurify';
 import { marked } from 'marked';
 import { createHighlighter } from 'shiki';
 import type { Plugin } from 'vite';
-import type { FileMetadata, FolderContentChunk, Frontmatter, GlobalManifest, MarkdownBuilderOptions, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from '../../@types/markdown.types';
+import type { FileMetadata, FolderContentChunk, Frontmatter, GlobalManifest, MarkdownBuilderOptions, MarkdownMeta, ProcessingResult, ShikiConfig, SyntaxHighlighter } from '../@types/markdown.types';
 import { DOMPURIFY_CONFIG, HIGHLIGHTER_CONFIG, MARKDOWN_CONFIG } from '../markdown-config';
 import { getAssetPath } from './plugin-utils';
 

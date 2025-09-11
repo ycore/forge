@@ -1,4 +1,4 @@
-import type { GlobalManifest, MarkdownContent, MarkdownMeta } from '../@types/markdown.types';
+import type { GlobalManifest, MarkdownContent, MarkdownMeta } from './@types/markdown.types';
 import { MARKDOWN_CONFIG } from './markdown-config';
 import { formatAssetUrl } from './markdown-utils';
 

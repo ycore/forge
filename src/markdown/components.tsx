@@ -7,7 +7,7 @@ import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation, useNavigate } from 'react-router';
-import type { DocContent, EnhancedMarkdownMeta, MarkdownPageData, MarkdownPageProps, MarkdownProps } from '../@types/markdown.types';
+import type { DocContent, EnhancedMarkdownMeta, MarkdownPageData, MarkdownPageProps, MarkdownProps } from './@types/markdown.types';
 import { ASSET_ROUTES } from './markdown-config';
 
 // ============================================================================

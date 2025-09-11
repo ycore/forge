@@ -8,13 +8,9 @@
     "url": "git+ssh://git@github.com/ycore/forge.git"
   },
   "exports": {
-    "./error": {
-      "import": "./src/error/index.ts",
-      "types": "./src/error/index.ts"
-    },
-    "./http": {
-      "import": "./src/http/index.ts",
-      "types": "./src/http/index.ts"
+    "./result": {
+      "import": "./src/result/index.ts",
+      "types": "./src/result/index.ts"
     },
     "./logger": {
       "import": "./src/logger/index.ts",

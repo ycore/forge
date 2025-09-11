@@ -1,4 +1,3 @@
-
 /**
  * Merge multiple headers objects into one (uses set so headers are overridden)
  */
