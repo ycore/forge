@@ -6,6 +6,8 @@ interface LogMetadata {
   count: number;
 }
 
+const logEntryKvTemplate = (prefix: string, timestamp: number, count: number): string => `${prefix}${timestamp}-${count}`;
+
 export interface KVLogChannelConfig {
   /** KV namespace to store logs */
   kv: KVNamespace;
@@ -39,7 +41,7 @@ export function createKVLogChannel(config: KVLogChannelConfig, minLevel: LogEntr
 
         // Create unique key with timestamp for natural ordering (most recent first when listed)
         const timestamp = new Date(entry.timestamp).getTime();
-        const logKey = `${keyPrefix}${timestamp}-${nextCount}`;
+        const logKey = logEntryKvTemplate(keyPrefix, timestamp, nextCount);
 
         // Store log entry with metadata
         await kv.put(logKey, JSON.stringify(entry), {

@@ -62,16 +62,37 @@ function mergeArrays<T>(target: T[], source: T[]): T[] {
 }
 
 /**
+ * Deep clone helper that preserves functions
+ */
+function deepClone<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj instanceof Date) return new Date(obj.getTime()) as T;
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepClone(item)) as T;
+  }
+  if (typeof obj === 'function') return obj;
+
+  const clonedObj = {} as T;
+  for (const key in obj) {
+    if (Object.hasOwn(obj, key)) {
+      clonedObj[key] = deepClone(obj[key]);
+    }
+  }
+  return clonedObj;
+}
+
+/**
  * Modern performant deep merge utility using best practices
  * - Type-safe with proper generic constraints
  * - Handles nested objects recursively
  * - Intelligently merges arrays of named objects
  * - Excludes Date objects from deep merging
+ * - Preserves functions (for config callbacks)
  */
 export function deepMerge<T extends object>(target: T, ...sources: Array<DeepPartial<T>>): T {
   if (!sources.length) return target;
 
-  const result = structuredClone(target);
+  const result = deepClone(target);
 
   for (const source of sources) {
     if (!source) continue;
