@@ -211,9 +211,14 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         const raw = await readFile(filePath, 'utf8');
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
         const { data: frontmatter } = parseFrontmatter(updated);
-        const { content: html, error } = await processMarkdownFile(filePath, purifyHtml, highlighter);
+        const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
 
-        if (error) throw new Error(error);
+        if (error) {
+          const errorMessage = errorContext 
+            ? `${error}\n  File: ${filePath}\n  ${errorContext}`
+            : `${error}\n  File: ${filePath}`;
+          throw new Error(errorMessage);
+        }
 
         const slug = relPath.replace(new RegExp(`${extension}$`), '');
         const folder = path.dirname(relPath) === '.' ? undefined : path.dirname(relPath);
@@ -244,9 +249,14 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         const raw = await readFile(filePath, 'utf8');
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
         const { data: frontmatter } = parseFrontmatter(updated);
-        const { content: html, error } = await processMarkdownFile(filePath, purifyHtml, highlighter);
+        const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
 
-        if (error) throw new Error(error);
+        if (error) {
+          const errorMessage = errorContext 
+            ? `${error}\n  File: ${filePath}\n  ${errorContext}`
+            : `${error}\n  File: ${filePath}`;
+          throw new Error(errorMessage);
+        }
 
         const slug = relPath.replace(new RegExp(`${extension}$`), '');
         const folder = path.dirname(relPath) === '.' ? undefined : path.dirname(relPath);
@@ -490,7 +500,7 @@ function parseFrontmatter(content: string) {
   return { data: frontmatter, content: markdown };
 }
 
-async function processMarkdownFile(filePath: string, purifyHtml = true, highlighter?: SyntaxHighlighter | null): Promise<{ content: string; error?: string }> {
+async function processMarkdownFile(filePath: string, purifyHtml = true, highlighter?: SyntaxHighlighter | null): Promise<{ content: string; error?: string; errorContext?: string }> {
   try {
     const source = await readFile(filePath, 'utf8');
     const { content: markdown } = parseFrontmatter(source);
@@ -502,9 +512,13 @@ async function processMarkdownFile(filePath: string, purifyHtml = true, highligh
     }
 
     const sanitizedContent = purifyHtml ? DOMPurify.sanitize(htmlContent, DOMPURIFY_CONFIG) : htmlContent;
-    const highlightedContent = highlighter ? await highlightCodeBlocks(htmlContent, highlighter) : sanitizedContent;
+    const result = highlighter ? await highlightCodeBlocks(htmlContent, highlighter, filePath) : { content: sanitizedContent };
 
-    return { content: highlightedContent };
+    if ('error' in result) {
+      return { content: '', error: result.error, errorContext: result.errorContext };
+    }
+
+    return { content: result.content };
   } catch (error) {
     return {
       content: '',
@@ -550,14 +564,17 @@ async function createShikiHighlighter(config: ShikiConfig = {}): Promise<SyntaxH
         // Add mobile-responsive classes to the generated pre element
         return html.replace(/<pre[^>]*>/, '<pre class="overflow-x-auto text-xs md:text-sm" style="background-color: #1f2937 !important;">');
       } catch (error) {
-        console.warn(`Failed to highlight code block with language "${language}":`, error);
-        return `<pre class="overflow-x-auto text-xs md:text-sm bg-gray-800 p-4 rounded"><code class="language-${language}">${code}</code></pre>`;
+        // Provide helpful error message for missing languages
+        if (error instanceof Error && error.message.includes('not found')) {
+          throw new Error(`Language \`${language}\` not found in Shiki highlighter`);
+        }
+        throw error;
       }
     },
   };
 }
 
-async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighlighter): Promise<string> {
+async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighlighter, filePath?: string): Promise<{ content: string } | { error: string; errorContext?: string }> {
   // Regular expression to find code blocks: <pre><code class="language-xxx">content</code></pre>
   const codeBlockRegex = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g;
 
@@ -579,14 +596,27 @@ async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighl
 
     try {
       const highlightedContent = await highlighter.highlight(decodedContent, language || 'text');
-
       processedContent = processedContent.replace(fullMatch, highlightedContent);
     } catch (error) {
-      console.warn(`Failed to highlight code block with language "${language}":`, error);
+      // Extract a snippet of the code for context (first 100 chars)
+      const codeSnippet = decodedContent.substring(0, 100).replace(/\n/g, '\\n');
+      const errorContext = `Language: \`${language || 'text'}\`\n  Code snippet: "${codeSnippet}${decodedContent.length > 100 ? '...' : ''}"`;
+      
+      console.error(`\n❌ Markdown Processing Error:`);
+      console.error(`  File: ${filePath || 'unknown'}`);
+      console.error(`  ${errorContext}`);
+      console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`\n  💡 Solution: Add '${language}' to HIGHLIGHTER_CONFIG.LANGS in markdown-config.ts\n`);
+      
+      // Return error with context instead of continuing
+      return {
+        error: `Failed to highlight code block with language "${language}"`,
+        errorContext
+      };
     }
   }
 
-  return processedContent;
+  return { content: processedContent };
 }
 
 async function execConcurrently<T>(items: T[], limit: number, handler: (item: T) => Promise<void>): Promise<void> {
