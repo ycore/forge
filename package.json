@@ -9,46 +9,47 @@
   },
   "exports": {
     "./result": {
-      "import": "./src/result/index.ts",
-      "types": "./src/result/index.ts"
+      "types": "./src/result/index.ts",
+      "import": "./src/result/index.ts"
     },
     "./logger": {
-      "import": "./src/logger/index.ts",
-      "types": "./src/logger/index.ts"
+      "types": "./src/logger/index.ts",
+      "import": "./src/logger/index.ts"
     },
     "./logger/plugin": {
       "node": {
-        "import": "./src/logger/plugin/index.ts",
-        "types": "./src/logger/plugin/index.ts"
+        "types": "./src/logger/plugin/index.ts",
+        "import": "./src/logger/plugin/index.ts"
       }
     },
     "./markdown": {
-      "import": "./src/markdown/index.ts",
-      "types": "./src/markdown/index.ts"
+      "types": "./src/markdown/index.ts",
+      "import": "./src/markdown/index.ts"
     },
     "./markdown/server": {
-      "import": "./src/markdown/server/index.ts",
-      "types": "./src/markdown/server/index.ts"
+      "types": "./src/markdown/server/index.ts",
+      "import": "./src/markdown/server/index.ts"
     },
     "./markdown/plugin": {
       "node": {
-        "import": "./src/markdown/plugin/index.ts",
-        "types": "./src/markdown/plugin/index.ts"
+        "types": "./src/markdown/plugin/index.ts",
+        "import": "./src/markdown/plugin/index.ts"
       }
     },
     "./markdown/styles/markdown.css": "./src/markdown/styles/markdown.css",
     "./services": {
-      "import": "./src/services/index.ts",
-      "types": "./src/services/index.ts"
+      "types": "./src/services/index.ts",
+      "import": "./src/services/index.ts"
     },
     "./utils": {
+      "types": "./src/utils/index.ts",
       "import": "./src/utils/index.ts",
-      "types": "./src/utils/index.ts"
+      "require": "./src/utils/index.ts"
     },
     "./vite/plugins": {
       "node": {
-        "import": "./src/vite/plugins/index.ts",
-        "types": "./src/vite/plugins/index.ts"
+        "types": "./src/vite/plugins/index.ts",
+        "import": "./src/vite/plugins/index.ts"
       }
     },
     "./package.json": "./package.json"
@@ -72,8 +73,8 @@
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/react": "^19.1.8",
-    "vite": "^7.0.2"
+    "@types/react": "^19.1.13",
+    "vite": "^7.1.5"
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",

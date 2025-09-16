@@ -5,5 +5,5 @@ export { returnFailure, returnSuccess } from './core/result';
 export { combineHeaders, mergeHeaders } from './http/headers';
 export { middlewareFailure, middlewarePassthrough } from './http/middleware';
 export { handleFailure, handleSuccess } from './http/response';
-export { validateFormData } from './validation/form';
+export { validateFormData, validateJsonData } from './validation/form';
 export { validateParams, validateRequest } from './validation/request';

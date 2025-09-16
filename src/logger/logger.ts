@@ -193,11 +193,6 @@ export const logger: Logger = {
     const params = formatLogArgs(args);
     return this.log({ ...params, level: 'debug' });
   },
-
-  // Legacy aliases for backward compatibility
-  warn(...args: LogArgs): Promise<void> {
-    return this.warning(...args);
-  },
 };
 
 // Track initialization state
@@ -259,4 +254,3 @@ export function requireInitialized(): void {
     throw new Error('Logger must be initialized before use. Call initLogger() in entry.worker.ts first.');
   }
 }
-

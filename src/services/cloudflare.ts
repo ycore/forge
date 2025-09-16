@@ -1,19 +1,19 @@
-import { unstable_createContext, type unstable_RouterContextProvider } from 'react-router';
+import { createContext, type RouterContextProvider } from 'react-router';
 
-export const CloudflareContext = unstable_createContext<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>({} as { env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties });
+export const CloudflareContext = createContext<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>({} as { env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties });
 
-export function getBindings(context: Readonly<unstable_RouterContextProvider>) {
+export function getBindings(context: Readonly<RouterContextProvider>) {
   return context.get(CloudflareContext).env;
 }
 
-export function getExecutionContext(context: Readonly<unstable_RouterContextProvider>): ExecutionContext {
+export function getExecutionContext(context: Readonly<RouterContextProvider>): ExecutionContext {
   return context.get(CloudflareContext).ctx;
 }
 
-export function getRequestProperties(context: Readonly<unstable_RouterContextProvider>): RequestInitCfProperties | undefined {
+export function getRequestProperties(context: Readonly<RouterContextProvider>): RequestInitCfProperties | undefined {
   return context.get(CloudflareContext).cf;
 }
 
-export function waitUntil<T>(context: Readonly<unstable_RouterContextProvider>, promise: Promise<T>) {
+export function waitUntil<T>(context: Readonly<RouterContextProvider>, promise: Promise<T>) {
   return getExecutionContext(context).waitUntil(promise);
 }

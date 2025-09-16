@@ -1,5 +1,5 @@
 import type { ThemeContext } from '@ycore/componentry/impetus/theme';
-import type { unstable_RouterContextProvider } from 'react-router';
+import type { RouterContextProvider } from 'react-router';
 
 export interface Frontmatter {
   title?: string;
@@ -117,5 +117,5 @@ export interface ServeOptions {
 
 export interface MarkdownLoaderArgs {
   request: Request;
-  context?: Readonly<unstable_RouterContextProvider>;
+  context?: Readonly<RouterContextProvider>;
 }

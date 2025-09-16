@@ -1,8 +1,7 @@
 import { dataWithToast } from '@ycore/componentry/impetus/toast';
 import { data, href, redirect } from 'react-router';
-
-import type { AppError } from '../@types/result.types';
 import type { ResponseOptions, ToastOptions } from '../@types/response.types';
+import type { AppError } from '../@types/result.types';
 import { returnFailure, returnSuccess } from '../core/result';
 
 /**

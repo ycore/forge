@@ -47,3 +47,10 @@ export async function validateFormData<S extends BaseSchema<any, any, any>>(sche
 
   return await validate(schema, object);
 }
+
+/**
+ * Validate JSON data against a schema
+ */
+export async function validateJsonData<S extends BaseSchema<any, any, any>>(schema: S, data: any): Promise<AppResult<InferOutput<S>, AppError>> {
+  return await validate(schema, data);
+}

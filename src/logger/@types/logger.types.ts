@@ -31,7 +31,6 @@ export interface Logger {
   notice(...args: LogArgs): Promise<void>;
   info(...args: LogArgs): Promise<void>;
   debug(...args: LogArgs): Promise<void>;
-  warn(...args: LogArgs): Promise<void>;
 }
 
 export interface LogParams {
