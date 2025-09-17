@@ -24,14 +24,17 @@ export interface AppError {
 }
 
 /**
- * Response metadata for HTTP layer
+ * Response metadata for HTTP layer (status and headers only)
  */
 export interface ResponseMeta {
   status?: number;
   headers?: HeadersInit;
-  redirect?: string;
-  toast?: ToastConfig;
 }
+
+/**
+ * Response callbacks for side effects (toasts, redirects, etc.)
+ */
+export type RespondCallbacks = (() => void | Promise<void>)[];
 
 /**
  * Toast configuration
@@ -41,6 +44,7 @@ export interface ToastConfig {
   type: 'success' | 'error' | 'warning' | 'info';
   duration?: number;
 }
+
 
 /**
  * Field errors extracted from AppError details
