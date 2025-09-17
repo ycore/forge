@@ -1,12 +1,14 @@
 import type { AppError } from '../@types/result.types';
-import { returnFailure } from '../core/result';
+import { err } from '../core/result';
 
 /**
  * Middleware response function for early termination with error
  * Returns a formatted Response object that follows the standard error shape
  */
 export function middlewareFailure<E = AppError>(error: E, options?: { status?: number; headers?: HeadersInit }): Response {
-  const responseData = returnFailure(error);
+  const responseData = typeof error === 'object' && error && 'message' in error
+    ? error as AppError
+    : err(String(error));
   const status = options?.status ?? 403;
   const headers = new Headers(options?.headers);
 

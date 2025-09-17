@@ -29,38 +29,7 @@ export const ASSET_ROUTES = {
 
 // DOMPurify configuration for markdown content
 export const DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: [
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6',
-    'p',
-    'br',
-    'strong',
-    'em',
-    'u',
-    's',
-    'del',
-    'a',
-    'img',
-    'ul',
-    'ol',
-    'li',
-    'blockquote',
-    'pre',
-    'code',
-    'table',
-    'thead',
-    'tbody',
-    'tr',
-    'th',
-    'td',
-    'hr',
-    'div',
-    'span',
-  ] as string[],
+  ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 's', 'del', 'a', 'img', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'] as string[],
   ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'class', 'id', 'start', 'type', 'colspan', 'rowspan', 'datetime', 'scope', 'data-*'] as string[],
   FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'button', 'iframe', 'frame', 'frameset', 'noframes'] as string[],
   FORBID_ATTR: ['style', 'on*'] as string[],
@@ -70,6 +39,6 @@ export const DOMPURIFY_CONFIG = {
 
 // Shiki highlighter configuration
 export const HIGHLIGHTER_CONFIG = {
-  LANGS: ['bash', 'css', 'html', 'javascript', 'json', 'markdown', 'sql', 'ts', 'tsx', 'typescript', 'yaml'] as string[],
+  LANGS: ['bash', 'css', 'html', 'javascript', 'json', 'markdown', 'sql', 'text', 'ts', 'tsx', 'typescript', 'xml', 'yaml'] as string[],
   THEMES: ['night-owl'] as string[],
 };

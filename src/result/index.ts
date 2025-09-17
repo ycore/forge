@@ -1,9 +1,65 @@
-export type { FormErrorProps, ResponseOptions, ToastOptions } from './@types/response.types';
-export type { AppError, AppResult, Failure, Success } from './@types/result.types';
-export { createAppError, flattenErrors, formErrors, toAppError, transformError } from './core/error';
-export { returnFailure, returnSuccess } from './core/result';
-export { combineHeaders, mergeHeaders } from './http/headers';
-export { middlewareFailure, middlewarePassthrough } from './http/middleware';
-export { handleFailure, handleSuccess } from './http/response';
-export { validateFormData, validateJsonData } from './validation/form';
-export { validateParams, validateRequest } from './validation/request';
+/**
+ * Result System - Simplified direct value or error pattern
+ */
+
+// Core types
+export type {
+  AppError,
+  FieldErrors,
+  ResponseMeta,
+  Result,
+  ToastConfig,
+} from './@types/result.types';
+// Error utilities
+export {
+  badRequestError,
+  extractFieldErrors,
+  flattenError,
+  forbiddenError,
+  notFoundError,
+  serverError,
+  toAppError,
+  transformError,
+  unauthorizedError,
+  validationError,
+} from './core/error';
+// Core functions
+export {
+  andThen,
+  combine,
+  combineObject,
+  err,
+  getData,
+  getError,
+  isError,
+  isOk,
+  map,
+  mapError,
+  ok,
+  orElse,
+  tryCatch,
+  unwrap,
+  unwrapOr,
+} from './core/result';
+// HTTP middleware helpers
+export {
+  middlewareFailure,
+  middlewarePassthrough,
+} from './http/middleware';
+// HTTP response helpers
+export {
+  HttpResponses,
+  respond,
+  respondError,
+  respondOk,
+  respondRedirect,
+  respondWithToast,
+} from './http/response';
+
+// Validation helpers
+export {
+  createValidationMiddleware,
+  validateFormData,
+  validateJsonData,
+  validateQueryParams,
+} from './validation/form';
