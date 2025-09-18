@@ -23,6 +23,7 @@ export interface Logger {
   configure(config: Partial<InternalLoggerConfig>): void;
   getConfig(): InternalLoggerConfig;
   log(params: LogParams): Promise<void>;
+  support(): Promise<string>;
   emergency(...args: LogArgs): Promise<void>;
   alert(...args: LogArgs): Promise<void>;
   critical(...args: LogArgs): Promise<void>;

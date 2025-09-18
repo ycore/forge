@@ -7,7 +7,7 @@ import { isError } from '../core/result';
  * Automatically determines status based on whether result is an error
  * Executes callbacks after creating the response for side effects (toasts, logging, etc.)
  */
-export function respond<T>(result: Result<T>, meta?: ResponseMeta, ...callbacks: RespondCallbacks) {
+function respond<T>(result: Result<T>, meta?: ResponseMeta, ...callbacks: RespondCallbacks) {
   const defaultStatus = isError(result) ? 400 : 200;
   const status = meta?.status ?? defaultStatus;
 

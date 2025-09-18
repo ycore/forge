@@ -128,6 +128,12 @@ export const logger: Logger = {
     await writeToChannels(entry);
   },
 
+  /**
+   * Genarates a support number
+   */
+  async support(): Promise<string> {
+    return crypto.randomUUID();
+  },
   // RFC 5424 log levels in descending order of severity
 
   /**
