@@ -1,7 +1,7 @@
 /**
  * Deep partial type for recursive partial application
  */
-type DeepPartial<T> = {
+export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
@@ -118,6 +118,3 @@ export function deepMerge<T extends object>(target: T, ...sources: Array<DeepPar
 
   return result;
 }
-
-// Export types
-export type { DeepPartial };
