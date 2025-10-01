@@ -176,11 +176,13 @@ export async function getMarkdownDocument(slug: string, assets: Fetcher, request
     const manifest = await getMarkdownManifest(assets, request, prefix);
     const docMeta = manifest.find(doc => doc.slug === slug);
 
-    if (!docMeta || !docMeta.folder) {
+    if (!docMeta) {
       return null;
     }
 
-    const folderContent = await loadFolderContent(docMeta.folder, assets, request, prefix);
+    // Documents without a folder are in the root folder
+    const folder = docMeta.folder || 'root';
+    const folderContent = await loadFolderContent(folder, assets, request, prefix);
     return folderContent[slug] || null;
   }
 
