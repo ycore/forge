@@ -1,8 +1,15 @@
 import type { RobotsOptions } from "./robots.types";
 
-export type SiteRoutes = Record<'sitemap' | 'robots', string>;
+/**
+ * Routes for website features (sitemap, robots.txt)
+ */
+export type WebsiteRoutes = Record<'sitemap' | 'robots', string>;
 
-export interface SiteConfig {
+/**
+ * Static website configuration for SEO, metadata, and publishing features
+ * Used by sitemap generation, robots.txt, and other website metadata needs
+ */
+export interface WebsiteConfig {
   // Core site configuration - single source of truth
   site: {
     url: string;                    // Base URL for everything (https://example.com)

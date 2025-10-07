@@ -16,15 +16,17 @@ export type ActualSecretNames = {
 }[keyof Cloudflare.Env];
 
 export type ActualEnvironmentVarNames = {
-  [K in keyof Cloudflare.Env]: Cloudflare.Env[K] extends string 
-    ? K extends ActualSecretNames 
-      ? never 
-      : K 
-    : never
+  [K in keyof Cloudflare.Env]: Cloudflare.Env[K] extends string
+  ? K extends ActualSecretNames
+  ? never
+  : K
+  : never
 }[keyof Cloudflare.Env];
 
 // Types that allow unconfigured defaults
-export type KVBindingNames = ActualKVBindingNames | Unconfigured;
-export type D1BindingNames = ActualD1BindingNames | Unconfigured;
-export type SecretNames = ActualSecretNames | Unconfigured;
-export type EnvironmentVarNames = ActualEnvironmentVarNames | Unconfigured;
+export type KVBindings = ActualKVBindingNames | Unconfigured;
+export type D1Bindings = ActualD1BindingNames | Unconfigured;
+export type SecretBindings = ActualSecretNames | Unconfigured;
+export type VarBindings = ActualEnvironmentVarNames | Unconfigured;
+// Legacy alias for backward compatibility
+export type EnvironmentVarNames = ActualEnvironmentVarNames;
