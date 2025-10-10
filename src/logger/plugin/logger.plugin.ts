@@ -87,6 +87,3 @@ export function loggerOptimization(options: LoggerPluginOptions = {}): Plugin {
     // },
   };
 }
-
-// Export default for convenience
-export default loggerOptimization;

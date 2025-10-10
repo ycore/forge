@@ -1,4 +1,3 @@
-import type { D1Database, D1Result } from '@cloudflare/workers-types';
 import { getTableName, is, SQL } from 'drizzle-orm';
 import { CasingCache } from 'drizzle-orm/casing';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';

@@ -1,4 +1,3 @@
-import type { D1Database } from '@cloudflare/workers-types';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type { SQLiteTable, TableConfig } from 'drizzle-orm/sqlite-core';
 
@@ -17,5 +16,3 @@ export interface MigrateOperations {
 }
 
 export const migrate: MigrateOperations = { migrateSchema, seedTable, clearTable, dropSchema, clearSchema };
-
-export default migrate;
