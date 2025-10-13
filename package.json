@@ -8,9 +8,13 @@
     "url": "git+ssh://git@github.com/ycore/forge.git"
   },
   "exports": {
-    "./result": {
-      "types": "./src/result/index.ts",
-      "import": "./src/result/index.ts"
+    "./intent": {
+      "types": "./src/intent/index.ts",
+      "import": "./src/intent/index.ts"
+    },
+    "./intent/server": {
+      "types": "./src/intent/server/index.ts",
+      "import": "./src/intent/server/index.ts"
     },
     "./logger": {
       "types": "./src/logger/index.ts",
@@ -40,6 +44,10 @@
     "./services": {
       "types": "./src/services/index.ts",
       "import": "./src/services/index.ts"
+    },
+    "./result": {
+      "types": "./src/result/index.ts",
+      "import": "./src/result/index.ts"
     },
     "./utils": {
       "types": "./src/utils/index.ts",
@@ -78,6 +86,9 @@
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "ws:types": "wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && tsc --noEmit"
+    "ws:format": "biome format src",
+    "ws:lint": "biome lint src",
+    "ws:tc": "tsc --noEmit",
+    "ws:types": "wrangler types --include-env=false './src/@types/worker-runtime.d.ts' && bun run ws:tc"
   }
 }
