@@ -6,9 +6,9 @@ import { isDevelopment } from './environment';
  * Runtime origin information extracted from current request
  */
 export type OriginInfo = {
-  domain: string;        // Domain only (e.g., 'example.com')
-  origin: string;        // Full origin (e.g., 'https://example.com')
-  isLocalhost: boolean;  // True if localhost/127.0.0.1
+  domain: string; // Domain only (e.g., 'example.com')
+  origin: string; // Full origin (e.g., 'https://example.com')
+  isLocalhost: boolean; // True if localhost/127.0.0.1
   isDevelopment: boolean; // True if development environment
 };
 

@@ -152,14 +152,15 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
           config.optimizeDeps.exclude = [];
         }
 
-        // Add workspace packages to exclude list
+        // Add workspace packages to exclude list (only workspace packages, not their dependencies)
         for (const pkg of workspacePackages) {
           if (!config.optimizeDeps.exclude.includes(pkg)) {
             config.optimizeDeps.exclude.push(pkg);
           }
         }
 
-        console.log(`[workspace-resolver] Auto-excluded ${workspacePackages.length} workspace packages from optimization`);
+        console.log(`[workspace-resolver] Excluded ${workspacePackages.length} workspace packages from optimization`);
+        console.log('[workspace-resolver] All dependencies will be pre-bundled normally by Vite');
       }
     },
 

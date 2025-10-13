@@ -22,7 +22,7 @@ export function bindDatabase<TSchema extends Record<string, unknown>>(env: Cloud
   const d1Database = env[binding as keyof Cloudflare.Env] as D1Database;
   const drizzleConfig: Parameters<typeof drizzle>[1] = { schema };
   if (enableLogging) {
-    drizzleConfig.logger = new Logger;
+    drizzleConfig.logger = new Logger();
   }
 
   return drizzle(d1Database, drizzleConfig);

@@ -7,21 +7,17 @@ import type { ConsoleChannelConfig, ConsoleOutputFormat, LogChannel, LogEntry, L
 const formatters: Record<ConsoleOutputFormat, (entry: LogEntry) => string> = {
   json: (entry: LogEntry) => JSON.stringify(entry, null, 2),
   compact: (entry: LogEntry) => {
-    const parts = [
-      entry.level.toUpperCase(),
-      entry.event || 'LOG',
-      entry.timestamp,
-    ];
+    const parts = [entry.level.toUpperCase(), entry.event || 'LOG', entry.timestamp];
 
     if (entry.args && Array.isArray(entry.args) && entry.args.length > 0) {
-      parts.push(...entry.args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)));
+      parts.push(...entry.args.map(arg => (typeof arg === 'string' ? arg : JSON.stringify(arg))));
     }
 
     // Add any additional properties (excluding the ones already handled)
     // biome-ignore lint/correctness/noUnusedVariables: extracting unused props
     const { level, event, timestamp, args, ...rest } = entry;
     if (Object.keys(rest).length > 0) {
-      parts.push(...Object.values(rest).map(val => typeof val === 'string' ? val : JSON.stringify(val)));
+      parts.push(...Object.values(rest).map(val => (typeof val === 'string' ? val : JSON.stringify(val))));
     }
 
     return `[ ${parts.join(' || ')} ]`;

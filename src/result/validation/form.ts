@@ -24,17 +24,14 @@ function parseValibotIssues(issues: any[]): Result<never> {
 
   return err('Validation failed', fieldErrors, {
     code: 'VALIDATION_ERROR',
-    status: 400
+    status: 400,
   });
 }
 
 /**
  * Validate data against a schema, returning Result
  */
-async function validate<S extends BaseSchema<any, any, any>>(
-  schema: S,
-  input: any
-): Promise<Result<InferOutput<S>>> {
+async function validate<S extends BaseSchema<any, any, any>>(schema: S, input: any): Promise<Result<InferOutput<S>>> {
   const result = safeParse(schema, input);
 
   if (result.success) {
@@ -47,13 +44,8 @@ async function validate<S extends BaseSchema<any, any, any>>(
 /**
  * Validate form data against a schema
  */
-export async function validateFormData<S extends BaseSchema<any, any, any>>(
-  schema: S,
-  requestOrFormData: Request | FormData
-): Promise<Result<InferOutput<S>>> {
-  const formData = requestOrFormData instanceof FormData
-    ? requestOrFormData
-    : await requestOrFormData.formData();
+export async function validateFormData<S extends BaseSchema<any, any, any>>(schema: S, requestOrFormData: Request | FormData): Promise<Result<InferOutput<S>>> {
+  const formData = requestOrFormData instanceof FormData ? requestOrFormData : await requestOrFormData.formData();
 
   const object: Record<string, any> = {};
 
@@ -82,20 +74,14 @@ export async function validateFormData<S extends BaseSchema<any, any, any>>(
 /**
  * Validate JSON data against a schema
  */
-export async function validateJsonData<S extends BaseSchema<any, any, any>>(
-  schema: S,
-  data: any
-): Promise<Result<InferOutput<S>>> {
+export async function validateJsonData<S extends BaseSchema<any, any, any>>(schema: S, data: any): Promise<Result<InferOutput<S>>> {
   return validate(schema, data);
 }
 
 /**
  * Validate query parameters against a schema
  */
-export async function validateQueryParams<S extends BaseSchema<any, any, any>>(
-  schema: S,
-  requestOrUrl: Request | URL | URLSearchParams
-): Promise<Result<InferOutput<S>>> {
+export async function validateQueryParams<S extends BaseSchema<any, any, any>>(schema: S, requestOrUrl: Request | URL | URLSearchParams): Promise<Result<InferOutput<S>>> {
   let searchParams: URLSearchParams;
 
   if (requestOrUrl instanceof Request) {

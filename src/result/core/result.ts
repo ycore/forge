@@ -106,53 +106,42 @@ export function orElse<T>(result: Result<T>, fn: () => Result<T>): Result<T> {
 /**
  * Convert a promise that might throw into a Result
  */
-export async function tryCatch<T>(
-  fn: () => Promise<T>,
-  errorMessage?: string
-): Promise<Result<T>> {
+export async function tryCatch<T>(fn: () => Promise<T>, errorMessage?: string): Promise<Result<T>> {
   try {
     return await fn();
   } catch (error) {
-    return err(
-      errorMessage || 'Operation failed',
-      undefined,
-      { cause: error }
-    );
+    return err(errorMessage || 'Operation failed', undefined, { cause: error });
   }
 }
 
 /**
  * Combine multiple results - returns first error or all values
  */
-export function combine<T extends readonly Result<any>[]>(
-  results: T
-): Result<{ [K in keyof T]: T[K] extends Result<infer U> ? U : never }> {
+export function combine<T extends readonly Result<any>[]>(results: T): Result<{ [K in keyof T]: T[K] extends Result<infer U> ? U : never }> {
   const values: any[] = [];
-  
+
   for (const result of results) {
     if (isError(result)) {
       return result;
     }
     values.push(result);
   }
-  
+
   return values as any;
 }
 
 /**
  * Combine results into an object
  */
-export function combineObject<T extends Record<string, Result<any>>>(
-  results: T
-): Result<{ [K in keyof T]: T[K] extends Result<infer U> ? U : never }> {
+export function combineObject<T extends Record<string, Result<any>>>(results: T): Result<{ [K in keyof T]: T[K] extends Result<infer U> ? U : never }> {
   const values: any = {};
-  
+
   for (const [key, result] of Object.entries(results)) {
     if (isError(result)) {
       return result;
     }
     values[key] = result;
   }
-  
+
   return values;
 }

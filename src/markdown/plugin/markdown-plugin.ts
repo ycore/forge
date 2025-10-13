@@ -214,9 +214,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
 
         if (error) {
-          const errorMessage = errorContext 
-            ? `${error}\n  File: ${filePath}\n  ${errorContext}`
-            : `${error}\n  File: ${filePath}`;
+          const errorMessage = errorContext ? `${error}\n  File: ${filePath}\n  ${errorContext}` : `${error}\n  File: ${filePath}`;
           throw new Error(errorMessage);
         }
 
@@ -252,9 +250,7 @@ export function markdownBuilder(options: MarkdownBuilderOptions): Plugin {
         const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
 
         if (error) {
-          const errorMessage = errorContext 
-            ? `${error}\n  File: ${filePath}\n  ${errorContext}`
-            : `${error}\n  File: ${filePath}`;
+          const errorMessage = errorContext ? `${error}\n  File: ${filePath}\n  ${errorContext}` : `${error}\n  File: ${filePath}`;
           throw new Error(errorMessage);
         }
 
@@ -601,17 +597,17 @@ async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighl
       // Extract a snippet of the code for context (first 100 chars)
       const codeSnippet = decodedContent.substring(0, 100).replace(/\n/g, '\\n');
       const errorContext = `Language: \`${language || 'text'}\`\n  Code snippet: "${codeSnippet}${decodedContent.length > 100 ? '...' : ''}"`;
-      
+
       console.error(`\n❌ Markdown Processing Error:`);
       console.error(`  File: ${filePath || 'unknown'}`);
       console.error(`  ${errorContext}`);
       console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);
       console.error(`\n  💡 Solution: Add '${language}' to HIGHLIGHTER_CONFIG.LANGS in markdown-config.ts\n`);
-      
+
       // Return error with context instead of continuing
       return {
         error: `Failed to highlight code block with language "${language}"`,
-        errorContext
+        errorContext,
       };
     }
   }

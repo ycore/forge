@@ -3,7 +3,7 @@ import { SpriteIcon } from '@ycore/componentry/images';
 import { LoadingBar } from '@ycore/componentry/impetus';
 import type { Themes } from '@ycore/componentry/impetus/theme';
 import { ThemeSwitch } from '@ycore/componentry/impetus/theme';
-import { type IconName, Link } from '@ycore/componentry/shadcn-ui';
+import { type IconName, Link } from '@ycore/componentry/vibrant';
 import clsx from 'clsx';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { useFetcher, useLocation, useNavigate } from 'react-router';

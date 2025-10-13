@@ -6,7 +6,7 @@ import { createKVLogChannel, type KVLogChannelConfig } from './kv-channel';
 /**
  * Registry of available channel factories
  */
-export const ChannelRegistry: { console: ConsoleChannelFactory; kv: KVChannelFactory; } = {
+export const ChannelRegistry: { console: ConsoleChannelFactory; kv: KVChannelFactory } = {
   console: (minLevel: LogLevel, config?: ConsoleChannelConfig) => createConsoleChannel(minLevel, config),
   kv: (minLevel: LogLevel, config: KVLogChannelConfig) => createKVLogChannel(config, minLevel),
 };

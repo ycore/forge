@@ -42,7 +42,7 @@ export function transformError(error: unknown): AppError {
 
     for (const issue of error.issues || []) {
       const field = issue.path?.length > 0 ? String(issue.path[0].key) : 'form';
-      
+
       // Only keep the first error per field for simplicity
       if (!fieldErrors[field]) {
         fieldErrors[field] = issue.message;
@@ -123,10 +123,8 @@ export function validationError(fieldErrors: Record<string, string>, message = '
  * Create a not found error
  */
 export function notFoundError(resource: string, identifier?: string | number): AppError {
-  const message = identifier 
-    ? `${resource} not found: ${identifier}`
-    : `${resource} not found`;
-  
+  const message = identifier ? `${resource} not found: ${identifier}` : `${resource} not found`;
+
   return err(message, { resource, identifier }, { code: 'NOT_FOUND', status: 404 });
 }
 

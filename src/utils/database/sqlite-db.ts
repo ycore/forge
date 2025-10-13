@@ -218,6 +218,6 @@ function sqlToString(sql: SQL<unknown>): string {
     escapeString: () => {
       throw new Error('Escape string not supported for SQL default values');
     },
-    casing: new CasingCache
+    casing: new CasingCache(),
   }).sql;
 }

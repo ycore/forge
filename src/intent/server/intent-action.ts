@@ -16,11 +16,7 @@ function cloneFormData(formData: FormData): FormData {
 /**
  * Executes an intent-based action handler from FormData
  */
-export async function handleIntent<Handlers extends IntentHandlers>(
-  formData: FormData,
-  handlers: Handlers,
-  config?: IntentActionConfig
-): Promise<Result<IntentResponse<Handlers>, AppError>> {
+export async function handleIntent<Handlers extends IntentHandlers>(formData: FormData, handlers: Handlers, config?: IntentActionConfig): Promise<Result<IntentResponse<Handlers>, AppError>> {
   const fieldName = config?.fieldName ?? 'intent';
   const intentValue = formData.get(fieldName);
 
@@ -31,9 +27,7 @@ export async function handleIntent<Handlers extends IntentHandlers>(
 
   if (intentName === null) {
     if (config?.defaultHandler) {
-      return config.defaultHandler(handlerFormData) as Promise<
-        Result<IntentResponse<Handlers>, AppError>
-      >;
+      return config.defaultHandler(handlerFormData) as Promise<Result<IntentResponse<Handlers>, AppError>>;
     }
     return err('Intent field is required', { field: fieldName, code: 'INTENT_MISSING' });
   }

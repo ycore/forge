@@ -45,7 +45,6 @@ export interface ToastConfig {
   duration?: number;
 }
 
-
 /**
  * Field errors extracted from AppError details
  */
@@ -59,12 +58,7 @@ export type FieldErrors = Record<string, string> & {
  * typical success object properties
  */
 export function isAppError(value: unknown): value is AppError {
-  if (
-    value == null ||
-    typeof value !== 'object' ||
-    !('message' in value) ||
-    typeof (value as any).message !== 'string'
-  ) {
+  if (value == null || typeof value !== 'object' || !('message' in value) || typeof (value as any).message !== 'string') {
     return false;
   }
 

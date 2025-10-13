@@ -48,13 +48,7 @@ const DEFAULT_LOGGER_PATTERNS = ['@ycore/forge/logger', './logger', '../logger']
  * - Works with both direct imports and destructured imports
  */
 export function loggerOptimization(options: LoggerPluginOptions = {}): Plugin {
-  const {
-    production = process.env.NODE_ENV === 'production',
-    stripLevels = DEFAULT_STRIP_LEVELS,
-    keepLevels = DEFAULT_KEEP_LEVELS,
-    replacementStrategy = 'remove',
-    loggerPatterns = DEFAULT_LOGGER_PATTERNS,
-  } = options;
+  const { production = process.env.NODE_ENV === 'production', stripLevels = DEFAULT_STRIP_LEVELS, keepLevels = DEFAULT_KEEP_LEVELS, replacementStrategy = 'remove', loggerPatterns = DEFAULT_LOGGER_PATTERNS } = options;
 
   const isProd = production;
   const _shouldOptimize = isProd;
