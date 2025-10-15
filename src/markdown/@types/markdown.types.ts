@@ -19,7 +19,7 @@ export interface MarkdownMeta {
   // Build metadata for caching
   _mtime?: number;
   _size?: number;
-  [key: string]: string | number | boolean | undefined;
+  [key: string]: string | number | boolean | string[] | undefined;
 }
 
 export interface MarkdownContent {
