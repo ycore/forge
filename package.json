@@ -1,6 +1,6 @@
 {
   "name": "@ycore/forge",
-  "version": "2.2.10",
+  "version": "2.2.11",
   "private": true,
   "type": "module",
   "repository": {
@@ -9,55 +9,55 @@
   },
   "exports": {
     "./intent": {
-      "types": "./src/intent/index.ts",
-      "import": "./src/intent/index.ts"
+      "types": "./dist/intent/index.d.ts",
+      "import": "./dist/intent/index.js"
     },
     "./intent/server": {
-      "types": "./src/intent/server/index.ts",
-      "import": "./src/intent/server/index.ts"
+      "types": "./dist/intent/server/index.d.ts",
+      "import": "./dist/intent/server/index.js"
     },
     "./logger": {
-      "types": "./src/logger/index.ts",
-      "import": "./src/logger/index.ts"
+      "types": "./dist/logger/index.d.ts",
+      "import": "./dist/logger/index.js"
     },
     "./logger/plugin": {
       "node": {
-        "types": "./src/logger/plugin/index.ts",
-        "import": "./src/logger/plugin/index.ts"
+        "types": "./dist/logger/plugin/index.d.ts",
+        "import": "./dist/logger/plugin/index.js"
       }
     },
     "./markdown": {
-      "types": "./src/markdown/index.ts",
-      "import": "./src/markdown/index.ts"
+      "types": "./dist/markdown/index.d.ts",
+      "import": "./dist/markdown/index.js"
     },
     "./markdown/server": {
-      "types": "./src/markdown/server/index.ts",
-      "import": "./src/markdown/server/index.ts"
+      "types": "./dist/markdown/server/index.d.ts",
+      "import": "./dist/markdown/server/index.js"
     },
     "./markdown/plugin": {
       "node": {
-        "types": "./src/markdown/plugin/index.ts",
-        "import": "./src/markdown/plugin/index.ts"
+        "types": "./dist/markdown/plugin/index.d.ts",
+        "import": "./dist/markdown/plugin/index.js"
       }
     },
-    "./markdown/styles/markdown.css": "./src/markdown/styles/markdown.css",
+    "./markdown/styles/markdown.css": "./dist/markdown/styles/markdown.css",
     "./services": {
-      "types": "./src/services/index.ts",
-      "import": "./src/services/index.ts"
+      "types": "./dist/services/index.d.ts",
+      "import": "./dist/services/index.js"
     },
     "./result": {
-      "types": "./src/result/index.ts",
-      "import": "./src/result/index.ts"
+      "types": "./dist/result/index.d.ts",
+      "import": "./dist/result/index.js"
     },
     "./utils": {
-      "types": "./src/utils/index.ts",
-      "import": "./src/utils/index.ts",
-      "require": "./src/utils/index.ts"
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js",
+      "require": "./dist/utils/index.js"
     },
     "./vite/plugins": {
       "node": {
-        "types": "./src/vite/plugins/index.ts",
-        "import": "./src/vite/plugins/index.ts"
+        "types": "./dist/vite/plugins/index.d.ts",
+        "import": "./dist/vite/plugins/index.js"
       }
     },
     "./package.json": "./package.json"
