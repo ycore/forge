@@ -35,7 +35,7 @@ function workspaceResolver(options = {}) {
       const exports = packageJson.exports || {};
       packageCache.set(pkgName, exports);
       return exports;
-    } catch (e) {
+    } catch (_e) {
       packageCache.set(pkgName, {});
       return {};
     }
@@ -96,9 +96,9 @@ function workspaceResolver(options = {}) {
               }
             }
           }
-        } catch (e) {}
+        } catch (_e) {}
       }
-    } catch (e) {}
+    } catch (_e) {}
     return workspacePackages;
   }
   return {
@@ -117,7 +117,8 @@ function workspaceResolver(options = {}) {
             config.optimizeDeps.exclude.push(pkg);
           }
         }
-        console.log(`[workspace-resolver] Auto-excluded ${workspacePackages.length} workspace packages from optimization`);
+        console.log(`[workspace-resolver] Excluded ${workspacePackages.length} workspace packages from optimization`);
+        console.log("[workspace-resolver] All dependencies will be pre-bundled normally by Vite");
       }
     },
     resolveId(id) {
@@ -160,4 +161,4 @@ export {
   workspaceResolver
 };
 
-//# debugId=1E3EC77CABD90ACE64756E2164756E21
+//# debugId=6AAEF40AF666FE5464756E2164756E21

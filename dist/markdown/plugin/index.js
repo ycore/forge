@@ -30,7 +30,38 @@ var ASSET_PREFIX = {
   fetch: "/assets/docs"
 };
 var DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "strong", "em", "u", "s", "del", "a", "img", "ul", "ol", "li", "blockquote", "pre", "code", "table", "thead", "tbody", "tr", "th", "td", "hr", "div", "span"],
+  ALLOWED_TAGS: [
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "br",
+    "strong",
+    "em",
+    "u",
+    "s",
+    "del",
+    "a",
+    "img",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "code",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "hr",
+    "div",
+    "span"
+  ],
   ALLOWED_ATTR: ["href", "title", "alt", "src", "class", "id", "start", "type", "colspan", "rowspan", "datetime", "scope", "data-*"],
   FORBID_TAGS: ["script", "object", "embed", "form", "input", "button", "iframe", "frame", "frameset", "noframes"],
   FORBID_ATTR: ["style", "on*"],
@@ -38,7 +69,7 @@ var DOMPURIFY_CONFIG = {
   ALLOW_DATA_ATTR: false
 };
 var HIGHLIGHTER_CONFIG = {
-  LANGS: ["bash", "css", "html", "javascript", "json", "markdown", "sql", "ts", "tsx", "typescript", "yaml"],
+  LANGS: ["bash", "css", "html", "javascript", "json", "markdown", "sql", "text", "ts", "tsx", "typescript", "xml", "yaml"],
   THEMES: ["night-owl"]
 };
 
@@ -209,9 +240,14 @@ ${markdown}`;
         const raw = await readFile(filePath, "utf8");
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
         const { data: frontmatter } = parseFrontmatter(updated);
-        const { content: html, error } = await processMarkdownFile(filePath, purifyHtml, highlighter);
-        if (error)
-          throw new Error(error);
+        const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
+        if (error) {
+          const errorMessage = errorContext ? `${error}
+  File: ${filePath}
+  ${errorContext}` : `${error}
+  File: ${filePath}`;
+          throw new Error(errorMessage);
+        }
         const slug = relPath.replace(new RegExp(`${extension}$`), "");
         const folder = path2.dirname(relPath) === "." ? undefined : path2.dirname(relPath);
         const validFrontmatter = frontmatter || {};
@@ -235,9 +271,14 @@ ${markdown}`;
         const raw = await readFile(filePath, "utf8");
         const updated = await updateFrontmatterDate(filePath, raw, metadata.mtime);
         const { data: frontmatter } = parseFrontmatter(updated);
-        const { content: html, error } = await processMarkdownFile(filePath, purifyHtml, highlighter);
-        if (error)
-          throw new Error(error);
+        const { content: html, error, errorContext } = await processMarkdownFile(filePath, purifyHtml, highlighter);
+        if (error) {
+          const errorMessage = errorContext ? `${error}
+  File: ${filePath}
+  ${errorContext}` : `${error}
+  File: ${filePath}`;
+          throw new Error(errorMessage);
+        }
         const slug = relPath.replace(new RegExp(`${extension}$`), "");
         const folder = path2.dirname(relPath) === "." ? undefined : path2.dirname(relPath);
         const validFrontmatter = frontmatter || {};
@@ -321,7 +362,7 @@ ${markdown}`;
       console.error("❌ Failed to write markdown JSON files:", e);
     }
   }
-  async function writeFolderFiles(folder, manifest, content) {
+  async function writeFolderFiles(folder, _manifest, content) {
     try {
       const dir = path2.dirname(getAssetPath("dummy"));
       await mkdir(dir, { recursive: true });
@@ -430,8 +471,11 @@ async function processMarkdownFile(filePath, purifyHtml = true, highlighter) {
       return { content: markdownString, error: `Unexpected marked result type: ${typeof htmlContent}` };
     }
     const sanitizedContent = purifyHtml ? DOMPurify.sanitize(htmlContent, DOMPURIFY_CONFIG) : htmlContent;
-    const highlightedContent = highlighter ? await highlightCodeBlocks(htmlContent, highlighter) : sanitizedContent;
-    return { content: highlightedContent };
+    const result = highlighter ? await highlightCodeBlocks(htmlContent, highlighter, filePath) : { content: sanitizedContent };
+    if ("error" in result) {
+      return { content: "", error: result.error, errorContext: result.errorContext };
+    }
+    return { content: result.content };
   } catch (error) {
     return {
       content: "",
@@ -464,13 +508,15 @@ async function createShikiHighlighter(config = {}) {
         const html = highlighter.codeToHtml(code, { lang: language, theme: "night-owl", colorReplacements: { "#011627": "#1f2937" } });
         return html.replace(/<pre[^>]*>/, '<pre class="overflow-x-auto text-xs md:text-sm" style="background-color: #1f2937 !important;">');
       } catch (error) {
-        console.warn(`Failed to highlight code block with language "${language}":`, error);
-        return `<pre class="overflow-x-auto text-xs md:text-sm bg-gray-800 p-4 rounded"><code class="language-${language}">${code}</code></pre>`;
+        if (error instanceof Error && error.message.includes("not found")) {
+          throw new Error(`Language \`${language}\` not found in Shiki highlighter`);
+        }
+        throw error;
       }
     }
   };
 }
-async function highlightCodeBlocks(htmlContent, highlighter) {
+async function highlightCodeBlocks(htmlContent, highlighter, filePath) {
   const codeBlockRegex = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g;
   let processedContent = htmlContent;
   const matches = [...htmlContent.matchAll(codeBlockRegex)];
@@ -483,10 +529,24 @@ async function highlightCodeBlocks(htmlContent, highlighter) {
       const highlightedContent = await highlighter.highlight(decodedContent, language || "text");
       processedContent = processedContent.replace(fullMatch, highlightedContent);
     } catch (error) {
-      console.warn(`Failed to highlight code block with language "${language}":`, error);
+      const codeSnippet = decodedContent.substring(0, 100).replace(/\n/g, "\\n");
+      const errorContext = `Language: \`${language || "text"}\`
+  Code snippet: "${codeSnippet}${decodedContent.length > 100 ? "..." : ""}"`;
+      console.error(`
+❌ Markdown Processing Error:`);
+      console.error(`  File: ${filePath || "unknown"}`);
+      console.error(`  ${errorContext}`);
+      console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`
+  \uD83D\uDCA1 Solution: Add '${language}' to HIGHLIGHTER_CONFIG.LANGS in markdown-config.ts
+`);
+      return {
+        error: `Failed to highlight code block with language "${language}"`,
+        errorContext
+      };
     }
   }
-  return processedContent;
+  return { content: processedContent };
 }
 async function execConcurrently(items, limit, handler) {
   const executing = [];
@@ -512,4 +572,4 @@ export {
   getAssetPath
 };
 
-//# debugId=A4D2BF90E570A1E264756E2164756E21
+//# debugId=CE5291F22A26A22464756E2164756E21

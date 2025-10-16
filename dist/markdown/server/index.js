@@ -261,7 +261,7 @@ async function getGlobalManifest(assets, request, prefix) {
     const globalManifest = await fetchContent(manifestUrl, assets);
     globalManifestCache = globalManifest;
     return globalManifest;
-  } catch (error) {
+  } catch (_error) {
     return { documents: [], _buildMode: "single" };
   }
 }
@@ -304,7 +304,7 @@ async function loadFolderContent(folder, assets, request, prefix) {
     const content = await fetchContent(contentUrl, assets);
     folderContentCache.set(folder, content);
     return content;
-  } catch (error) {
+  } catch (_error) {
     return {};
   }
 }
@@ -313,10 +313,11 @@ async function getMarkdownDocument(slug, assets, request, prefix) {
   if (globalManifest._buildMode === "chunked") {
     const manifest = await getMarkdownManifest(assets, request, prefix);
     const docMeta = manifest.find((doc) => doc.slug === slug);
-    if (!docMeta || !docMeta.folder) {
+    if (!docMeta) {
       return null;
     }
-    const folderContent = await loadFolderContent(docMeta.folder, assets, request, prefix);
+    const folder = docMeta.folder || "root";
+    const folderContent = await loadFolderContent(folder, assets, request, prefix);
     return folderContent[slug] || null;
   }
   const content = await getMarkdownContent(assets, request, prefix);
@@ -373,4 +374,4 @@ export {
   markdownLoader
 };
 
-//# debugId=D9534399766EC11564756E2164756E21
+//# debugId=1898A9BD9365987764756E2164756E21

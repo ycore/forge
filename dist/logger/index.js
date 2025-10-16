@@ -1,39 +1,5 @@
-// src/logger/channels/console-channel.ts
-function createConsoleChannel(minLevel, config = {}) {
-  const { prettyPrint = false, useLogLevelMethods = false } = config;
-  return {
-    name: "console",
-    minLevel,
-    enabled: true,
-    output: (entry) => {
-      const output = prettyPrint ? JSON.stringify(entry, null, 2) : JSON.stringify(entry);
-      if (useLogLevelMethods) {
-        switch (entry.level) {
-          case "emergency":
-          case "alert":
-          case "critical":
-          case "error":
-            console.error(output);
-            break;
-          case "warning":
-            console.warn(output);
-            break;
-          case "debug":
-            console.debug(output);
-            break;
-          case "info":
-          case "notice":
-          default:
-            console.info(output);
-            break;
-        }
-      } else {
-        console.log(output);
-      }
-    }
-  };
-}
 // src/logger/channels/kv-channel.ts
+var logEntryKvTemplate = (prefix, timestamp, count) => `${prefix}${timestamp}-${count}`;
 function createKVLogChannel(config, minLevel = "info") {
   const { kv, logsLimit = 500, logsTrigger = 1000, keyPrefix = "log:", countKey = "log_count" } = config;
   return {
@@ -46,7 +12,7 @@ function createKVLogChannel(config, minLevel = "info") {
         const currentCount = currentCountStr ? Number.parseInt(currentCountStr, 10) : 0;
         const nextCount = currentCount + 1;
         const timestamp = new Date(entry.timestamp).getTime();
-        const logKey = `${keyPrefix}${timestamp}-${nextCount}`;
+        const logKey = logEntryKvTemplate(keyPrefix, timestamp, nextCount);
         await kv.put(logKey, JSON.stringify(entry), {
           metadata: {
             timestamp: entry.timestamp,
@@ -96,7 +62,7 @@ async function cleanupOldLogs(kv, logsLimit, keyPrefix, countKey) {
   }
 }
 async function getLogsFromKV(kv, options = {}) {
-  const { limit = 100, keyPrefix = "log:", countKey = "log_count" } = options;
+  const { limit = 100, keyPrefix = "log:" } = options;
   try {
     const listResult = await kv.list({ prefix: keyPrefix });
     if (!listResult.keys.length) {
@@ -130,92 +96,6 @@ async function clearLogsFromKV(kv, options = {}) {
     throw error;
   }
 }
-// src/logger/channels/webhook-channel.ts
-function createWebhookChannel(config, minLevel = "error") {
-  const {
-    webhookUrl,
-    headers = {},
-    timeout = 5000,
-    retry,
-    formatter
-  } = config;
-  const defaultHeaders = {
-    "Content-Type": "application/json",
-    "User-Agent": "forge-logger/1.0",
-    ...headers
-  };
-  const defaultFormatter = (entry) => ({
-    level: entry.level,
-    timestamp: entry.timestamp,
-    event: entry.event,
-    message: `${entry.event}: ${entry.timestamp}`,
-    data: entry,
-    source: "forge-logger"
-  });
-  const sendWebhook = async (entry, attempt = 1) => {
-    try {
-      const controller = new AbortController;
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      const payload = formatter ? formatter(entry) : defaultFormatter(entry);
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: defaultHeaders,
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (retry && attempt < retry.attempts) {
-        setTimeout(() => {
-          sendWebhook(entry, attempt + 1).catch((retryError) => {
-            console.error(`Webhook retry ${attempt + 1} failed:`, retryError);
-          });
-        }, retry.delay * attempt);
-        return;
-      }
-      console.error(`Failed to send log to webhook after ${attempt} attempts:`, errorMessage);
-    }
-  };
-  return {
-    name: "webhook",
-    minLevel,
-    enabled: true,
-    output: async (entry) => {
-      sendWebhook(entry).catch((error) => {
-        console.error("Webhook channel error:", error);
-      });
-    }
-  };
-}
-
-// src/logger/channels/registry.ts
-var ChannelRegistry = {
-  console: (minLevel, config) => createConsoleChannel(minLevel, config),
-  webhook: (minLevel, config) => createWebhookChannel(config, minLevel),
-  kv: (minLevel, config) => createKVLogChannel(config, minLevel)
-};
-function createChannelsFromConfig(configs) {
-  return configs.map((channelConfig) => {
-    const factory = ChannelRegistry[channelConfig.type];
-    if (!factory) {
-      throw new Error(`Unknown channel type: ${channelConfig.type}`);
-    }
-    return factory(channelConfig.minLevel, channelConfig.config);
-  });
-}
-function getChannelConfigForSituation(situationConfig, environment = "default", situation) {
-  if (situation && situationConfig.situations?.[situation]) {
-    return situationConfig.situations[situation];
-  }
-  if (environment !== "default" && situationConfig[environment]) {
-    return situationConfig[environment];
-  }
-  return situationConfig.default;
-}
 // src/logger/logger.config.ts
 var LOG_LEVELS = {
   emergency: 7,
@@ -230,153 +110,160 @@ var LOG_LEVELS = {
 function shouldLog(level, minLevel) {
   return LOG_LEVELS[level] >= LOG_LEVELS[minLevel];
 }
-function getEnvVar(name) {
-  if (typeof globalThis !== "undefined" && globalThis.ENVIRONMENT) {
-    return globalThis.ENVIRONMENT[name];
+function getChannelOptions(registry, production, baseOptions = {}, kv) {
+  if (registry === "console") {
+    const envDefaults = {
+      format: production ? "raw" : "json",
+      useLogLevelMethods: !production
+    };
+    return { ...envDefaults, ...baseOptions };
   }
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    return import.meta.env[name];
+  let options = { ...baseOptions };
+  if (registry === "kv" && kv) {
+    options = { ...options, kv };
   }
-  if (typeof process !== "undefined" && process.env) {
-    return process.env[name];
-  }
-  return;
+  return options;
 }
-function isCloudflareWorker() {
-  return typeof caches !== "undefined" && typeof navigator === "undefined";
+function getLoggerDefaults(config, production) {
+  const defaults = production ? config.defaults?.production : config.defaults?.development;
+  return {
+    defaultLevel: defaults?.defaultLevel || (production ? "warning" : "info"),
+    enableSanitization: defaults?.enableSanitization ?? true
+  };
 }
-function isDevelopment() {
-  const nodeEnv = getEnvVar("NODE_ENV");
-  return nodeEnv === "development" || !nodeEnv && !isCloudflareWorker();
-}
-function isProduction() {
-  return getEnvVar("NODE_ENV") === "production";
-}
-var DEFAULT_CHANNEL_CONFIG = {
-  default: [
+var defaultLoggerConfig = {
+  init: [
     {
-      type: "console",
-      minLevel: "info",
-      config: { prettyPrint: false }
+      production: false,
+      channel: "console",
+      level: "debug"
+    },
+    {
+      production: false,
+      channel: "console",
+      level: "warning"
+    },
+    {
+      production: false,
+      channel: "kv",
+      level: "info"
+    },
+    {
+      production: true,
+      channel: "kv",
+      level: "warning"
     }
   ],
-  development: [
-    {
-      type: "console",
-      minLevel: "debug",
-      config: { prettyPrint: true, useLogLevelMethods: true }
-    }
-  ],
-  production: [
-    {
-      type: "console",
-      minLevel: "warning",
-      config: { prettyPrint: false }
-    }
-  ],
-  situations: {
-    "cloudflare-worker": [
-      {
-        type: "console",
-        minLevel: "info",
-        config: { prettyPrint: false }
+  channels: {
+    console: {
+      registry: "console",
+      options: {}
+    },
+    kv: {
+      registry: "kv",
+      options: {
+        logsLimit: 500,
+        logsTrigger: 750
       }
-    ],
-    "with-webhook": [
-      {
-        type: "console",
-        minLevel: "info",
-        config: { prettyPrint: false }
-      },
-      {
-        type: "webhook",
-        minLevel: "error",
-        config: {
-          webhookUrl: "",
-          timeout: 5000,
-          retry: { attempts: 3, delay: 1000 }
-        }
-      }
-    ]
+    }
+  },
+  defaults: {
+    development: {
+      defaultLevel: "debug",
+      enableSanitization: true
+    },
+    production: {
+      defaultLevel: "warning",
+      enableSanitization: true
+    }
   }
 };
-function createLoggerConfig() {
-  const environment = isDevelopment() ? "development" : isProduction() ? "production" : "default";
-  const debugEnabled = getEnvVar("DEBUG") === "true";
-  const webhookUrl = getEnvVar("LOG_WEBHOOK_URL");
-  let situation;
-  if (isCloudflareWorker()) {
-    situation = webhookUrl ? "with-webhook" : "cloudflare-worker";
-  } else if (webhookUrl) {
-    situation = "with-webhook";
-  }
-  let channelConfigs = getChannelConfigForSituation(DEFAULT_CHANNEL_CONFIG, environment, situation);
-  if (isDevelopment() && debugEnabled) {
-    channelConfigs = channelConfigs.map((config) => {
-      if (config.type === "console") {
-        return {
-          ...config,
-          minLevel: "debug"
-        };
-      }
-      return config;
-    });
-  }
-  if (webhookUrl) {
-    channelConfigs = channelConfigs.map((config) => {
-      if (config.type === "webhook" && config.config) {
-        return {
-          ...config,
-          config: {
-            ...config.config,
-            webhookUrl
-          }
-        };
-      }
-      return config;
-    });
-  }
-  const channels = createChannelsFromConfig(channelConfigs);
-  return {
-    defaultLevel: isDevelopment() && debugEnabled ? "debug" : isProduction() ? "warning" : "info",
-    channels,
-    enableSanitization: true
-  };
-}
-function createLoggerConfigWithKV(kv) {
-  const baseConfig = createLoggerConfig();
-  const kvConfig = {
-    production: { logsLimit: 500, logsTrigger: 750 },
-    development: { logsLimit: 100, logsTrigger: 150 }
-  };
-  const environment = isDevelopment() ? "development" : "production";
-  const kvSettings = kvConfig[environment];
-  const kvChannelConfig = {
-    type: "kv",
-    minLevel: isDevelopment() ? baseConfig.defaultLevel : "debug",
-    config: {
-      kv,
-      ...kvSettings
+
+// src/logger/channels/console-channel.ts
+var formatters = {
+  json: (entry) => JSON.stringify(entry, null, 2),
+  compact: (entry) => {
+    const parts = [entry.level.toUpperCase(), entry.event || "LOG", entry.timestamp];
+    if (entry.args && Array.isArray(entry.args) && entry.args.length > 0) {
+      parts.push(...entry.args.map((arg) => typeof arg === "string" ? arg : JSON.stringify(arg)));
     }
-  };
-  const kvChannels = createChannelsFromConfig([kvChannelConfig]);
-  return {
-    ...baseConfig,
-    channels: [...baseConfig.channels, ...kvChannels]
-  };
+    const { level, event, timestamp, args, ...rest } = entry;
+    if (Object.keys(rest).length > 0) {
+      parts.push(...Object.values(rest).map((val) => typeof val === "string" ? val : JSON.stringify(val)));
+    }
+    return `[ ${parts.join(" || ")} ]`;
+  },
+  raw: (entry) => JSON.stringify(entry)
+};
+function formatLogEntry(entry, format) {
+  return formatters[format](entry);
 }
-function createCustomLoggerConfig(situationConfig, environment = "default", situation) {
-  const channelConfigs = getChannelConfigForSituation(situationConfig, environment, situation);
-  const channels = createChannelsFromConfig(channelConfigs);
+var consoleMethods = {
+  emergency: console.error,
+  alert: console.error,
+  critical: console.error,
+  error: console.error,
+  warning: console.warn,
+  notice: console.info,
+  info: console.info,
+  debug: console.debug
+};
+function createConsoleChannel(minLevel, config = {}) {
+  const { format = "raw", useLogLevelMethods = false } = config;
   return {
-    defaultLevel: environment === "production" ? "warning" : "info",
-    channels,
-    enableSanitization: true
+    name: "console",
+    minLevel,
+    enabled: true,
+    output: (entry) => {
+      const output = formatLogEntry(entry, format);
+      if (useLogLevelMethods) {
+        consoleMethods[entry.level](output);
+      } else {
+        console.log(output);
+      }
+    }
   };
 }
 
+// src/logger/channels/registry.ts
+var ChannelRegistry = {
+  console: (minLevel, config) => createConsoleChannel(minLevel, config),
+  kv: (minLevel, config) => createKVLogChannel(config, minLevel)
+};
+
+// src/logger/logger.helpers.ts
+function createInternalLoggerConfig(config, production, kv) {
+  const relevantInits = config.init.filter((init) => init.production === production && init.level !== "null");
+  const channels = relevantInits.map((init) => {
+    const channelDef = config.channels[init.channel];
+    if (!channelDef) {
+      throw new Error(`Channel definition not found for: ${init.channel}`);
+    }
+    const factory = ChannelRegistry[channelDef.registry];
+    if (!factory) {
+      throw new Error(`Unknown registry type: ${channelDef.registry}`);
+    }
+    const options = getChannelOptions(channelDef.registry, production, channelDef.options, kv);
+    if (channelDef.registry === "console") {
+      return ChannelRegistry.console(init.level, options);
+    } else if (channelDef.registry === "kv") {
+      if (!options.kv) {
+        throw new Error("KV namespace is required for KV channel");
+      }
+      return ChannelRegistry.kv(init.level, options);
+    }
+    throw new Error(`Unsupported registry type: ${channelDef.registry}`);
+  });
+  const { defaultLevel, enableSanitization } = getLoggerDefaults(config, production);
+  return { defaultLevel, channels, enableSanitization };
+}
+
 // src/logger/logger.ts
-var loggerConfig = createLoggerConfig();
+var loggerConfig = {
+  defaultLevel: "info",
+  channels: [],
+  enableSanitization: true
+};
 function sanitizeLogParams(params) {
   if (!loggerConfig.enableSanitization) {
     return params;
@@ -404,8 +291,7 @@ async function writeToChannels(entry) {
     try {
       const result = channel.output(entry);
       return result instanceof Promise ? result : Promise.resolve();
-    } catch (error) {
-      console.error(`Failed to write to channel ${channel.name}:`, error);
+    } catch (_error) {
       return Promise.resolve();
     }
   });
@@ -421,6 +307,9 @@ var logger = {
   async log(params) {
     const entry = createLogEntry(params);
     await writeToChannels(entry);
+  },
+  async support() {
+    return crypto.randomUUID();
   },
   emergency(...args) {
     const params = formatLogArgs(args);
@@ -453,30 +342,43 @@ var logger = {
   debug(...args) {
     const params = formatLogArgs(args);
     return this.log({ ...params, level: "debug" });
-  },
-  warn(...args) {
-    return this.warning(...args);
   }
 };
+var isLoggerInitialized = false;
+async function initLogger(options) {
+  if (isLoggerInitialized) {
+    return false;
+  }
+  const {
+    config,
+    store,
+    production = true,
+    startupCallback
+  } = options;
+  const finalConfig = createInternalLoggerConfig(config, production, store);
+  logger.configure(finalConfig);
+  isLoggerInitialized = true;
+  if (startupCallback) {
+    await startupCallback();
+  }
+  return true;
+}
+function isInitialized() {
+  return isLoggerInitialized;
+}
+function requireInitialized() {
+  if (!isLoggerInitialized) {
+    throw new Error("Logger must be initialized before use. Call initLogger() in entry.worker.ts first.");
+  }
+}
 export {
-  shouldLog,
+  requireInitialized,
   logger,
-  isProduction,
-  isDevelopment,
-  isCloudflareWorker,
+  isInitialized,
+  initLogger,
   getLogsFromKV,
-  getChannelConfigForSituation,
-  createWebhookChannel,
-  createLoggerConfigWithKV,
-  createLoggerConfig,
-  createKVLogChannel,
-  createCustomLoggerConfig,
-  createConsoleChannel,
-  createChannelsFromConfig,
-  clearLogsFromKV,
-  LOG_LEVELS,
-  DEFAULT_CHANNEL_CONFIG,
-  ChannelRegistry
+  defaultLoggerConfig,
+  clearLogsFromKV
 };
 
-//# debugId=77EC84DBCF896EB064756E2164756E21
+//# debugId=0EF1F9F56934228564756E2164756E21
