@@ -112,7 +112,7 @@ async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: str
     const remainingCount = sortedKeys.length - logsToDelete.length;
     await kv.put(countKey, remainingCount.toString());
 
-    console.log(`Cleaned up ${logsToDelete.length} old logs, keeping ${logsLimit} most recent logs`);
+    console.info(`Cleaned up ${logsToDelete.length} old logs, keeping ${logsLimit} most recent logs`);
   } catch (error) {
     console.error('Failed to cleanup old logs:', error);
     throw error;

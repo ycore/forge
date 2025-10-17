@@ -55,7 +55,7 @@ async function cleanupOldLogs(kv, logsLimit, keyPrefix, countKey) {
     await batchDeleteKeys(kv, keysToDelete);
     const remainingCount = sortedKeys.length - logsToDelete.length;
     await kv.put(countKey, remainingCount.toString());
-    console.log(`Cleaned up ${logsToDelete.length} old logs, keeping ${logsLimit} most recent logs`);
+    console.info(`Cleaned up ${logsToDelete.length} old logs, keeping ${logsLimit} most recent logs`);
   } catch (error) {
     console.error("Failed to cleanup old logs:", error);
     throw error;
@@ -219,7 +219,7 @@ function createConsoleChannel(minLevel, config = {}) {
       if (useLogLevelMethods) {
         consoleMethods[entry.level](output);
       } else {
-        console.log(output);
+        console.info(output);
       }
     }
   };
@@ -239,20 +239,21 @@ function createInternalLoggerConfig(config, production, kv) {
     if (!channelDef) {
       throw new Error(`Channel definition not found for: ${init.channel}`);
     }
-    const factory = ChannelRegistry[channelDef.registry];
-    if (!factory) {
-      throw new Error(`Unknown registry type: ${channelDef.registry}`);
-    }
     const options = getChannelOptions(channelDef.registry, production, channelDef.options, kv);
-    if (channelDef.registry === "console") {
-      return ChannelRegistry.console(init.level, options);
-    } else if (channelDef.registry === "kv") {
-      if (!options.kv) {
-        throw new Error("KV namespace is required for KV channel");
+    const channelFactories = {
+      console: () => ChannelRegistry.console(init.level, options),
+      kv: () => {
+        if (!options.kv) {
+          throw new Error("KV namespace is required for KV channel");
+        }
+        return ChannelRegistry.kv(init.level, options);
       }
-      return ChannelRegistry.kv(init.level, options);
+    };
+    const createChannel = channelFactories[channelDef.registry];
+    if (!createChannel) {
+      throw new Error(`Unsupported registry type: ${channelDef.registry}`);
     }
-    throw new Error(`Unsupported registry type: ${channelDef.registry}`);
+    return createChannel();
   });
   const { defaultLevel, enableSanitization } = getLoggerDefaults(config, production);
   return { defaultLevel, channels, enableSanitization };
@@ -381,4 +382,4 @@ export {
   clearLogsFromKV
 };
 
-//# debugId=0EF1F9F56934228564756E2164756E21
+//# debugId=F4A4459BDD2040AC64756E2164756E21

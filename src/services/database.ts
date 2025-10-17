@@ -53,11 +53,15 @@ export function getDatabase(context: Readonly<RouterContextProvider>) {
 
 /**
  * Custom Drizzle logger that integrates with the logger system
- * Logs SQL queries at debug level when enabled stripping newlines and leading/trailing spaces
+ * - Strips newlines, excessive whitespace and replaces double quotes with backticks for cleaner JSON serialization
  */
 class Logger implements LoggerInterface {
   logQuery(query: string, params: unknown[]): void {
-    const cleanQuery = query.replace(/\s*\n\s*/g, ' ').trim();
+    const cleanQuery = query
+      .replace(/\s*\n\s*/g, ' ')  // Remove newlines and surrounding whitespace
+      .replace(/"/g, '`')         // Replace double quotes with backticks
+      .replace(/\s+/g, ' ')       // Normalize multiple spaces to single space
+      .trim();
 
     logger.debug('SQL', { query: cleanQuery, params: params.length > 0 ? params : undefined });
   }

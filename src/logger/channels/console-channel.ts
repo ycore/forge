@@ -53,7 +53,7 @@ export function createConsoleChannel(minLevel: LogLevel, config: ConsoleChannelC
       if (useLogLevelMethods) {
         consoleMethods[entry.level](output);
       } else {
-        console.log(output);
+        console.info(output);
       }
     },
   };
