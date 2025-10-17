@@ -2,7 +2,7 @@ export type { D1Bindings, EnvironmentVarNames, KVBindings, SecretBindings, Uncon
 export { UNCONFIGURED } from './@types/cloudflare.types';
 export type { RobotsOptions } from './@types/robots.types';
 export type { WebsiteConfig, WebsiteRoutes } from './@types/website.types';
-export { CloudflareContext, CLOUDFLARE_CONTEXT_KEY, getBindings, getExecutionContext, getRequestProperties, waitUntil } from './cloudflare';
+export { CloudflareContext, getBindings, getExecutionContext, getRequestProperties, waitUntil } from './cloudflare';
 export type { DatabaseConfig } from './database';
 export { bindDatabase, DatabaseContext, getDatabase, initDatabase } from './database';
 export type { Environment } from './environment';
