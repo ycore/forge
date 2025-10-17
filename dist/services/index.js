@@ -2,14 +2,9 @@
 var UNCONFIGURED = "UNCONFIGURED";
 // src/services/cloudflare.ts
 import { createContext } from "react-router";
-var CLOUDFLARE_CONTEXT_KEY = Symbol.for("__cloudflare_context__");
 var CloudflareContext = createContext({});
 function getBindings(context) {
-  let cloudflareData = context.get(CloudflareContext);
-  if (!cloudflareData || Object.keys(cloudflareData).length === 0) {
-    cloudflareData = context.get(CLOUDFLARE_CONTEXT_KEY);
-  }
-  return cloudflareData?.env;
+  return context.get(CloudflareContext).env;
 }
 function getExecutionContext(context) {
   return context.get(CloudflareContext).ctx;
@@ -369,8 +364,7 @@ export {
   UNCONFIGURED,
   EnvironmentContext,
   DatabaseContext,
-  CloudflareContext,
-  CLOUDFLARE_CONTEXT_KEY
+  CloudflareContext
 };
 
-//# debugId=154A7FD3B7588E8F64756E2164756E21
+//# debugId=1AA127D2ADADDFC564756E2164756E21
