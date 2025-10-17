@@ -151,7 +151,7 @@ function getDatabase(context) {
 
 class Logger {
   logQuery(query, params) {
-    const cleanQuery = query.replace(/\s*\n\s*/g, " ").trim();
+    const cleanQuery = query.replace(/\s*\n\s*/g, " ").replace(/"/g, "`").replace(/\s+/g, " ").trim();
     logger.debug("SQL", { query: cleanQuery, params: params.length > 0 ? params : undefined });
   }
 }
@@ -373,4 +373,4 @@ export {
   CLOUDFLARE_CONTEXT_KEY
 };
 
-//# debugId=5BC12C428006E07F64756E2164756E21
+//# debugId=154A7FD3B7588E8F64756E2164756E21

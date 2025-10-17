@@ -25713,9 +25713,9 @@ var DataPagination2 = Object.assign(DataPagination, {
   RowsPerPageSelector
 });
 var InputOtp2 = Object.assign(InputOtp, {
-  InputOtpGroup,
-  InputOtpSlot,
-  InputOtpHiddenInput
+  Group: InputOtpGroup,
+  Slot: InputOtpSlot,
+  HiddenInput: InputOtpHiddenInput
 });
 var Accordion3 = Object.assign(Accordion2, {
   Item: AccordionItem2,
@@ -26766,4 +26766,4 @@ export {
   ASSET_PREFIX
 };
 
-//# debugId=9AC28CED11BB0A8364756E2164756E21
+//# debugId=0FDCD492893A2CB364756E2164756E21

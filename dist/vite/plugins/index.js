@@ -117,8 +117,8 @@ function workspaceResolver(options = {}) {
             config.optimizeDeps.exclude.push(pkg);
           }
         }
-        console.log(`[workspace-resolver] Excluded ${workspacePackages.length} workspace packages from optimization`);
-        console.log("[workspace-resolver] All dependencies will be pre-bundled normally by Vite");
+        console.info(`[workspace-resolver] Excluded ${workspacePackages.length} workspace packages from optimization`);
+        console.info("[workspace-resolver] All dependencies will be pre-bundled normally by Vite");
       }
     },
     resolveId(id) {
@@ -161,4 +161,4 @@ export {
   workspaceResolver
 };
 
-//# debugId=6AAEF40AF666FE5464756E2164756E21
+//# debugId=023EEA54BF24439664756E2164756E21
