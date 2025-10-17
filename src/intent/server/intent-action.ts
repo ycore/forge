@@ -7,9 +7,9 @@ import { err } from '../../result/core/result';
  */
 function cloneFormData(formData: FormData): FormData {
   const cloned = new FormData();
-  for (const [key, value] of formData.entries()) {
+  formData.forEach((value, key) => {
     cloned.append(key, value);
-  }
+  });
   return cloned;
 }
 

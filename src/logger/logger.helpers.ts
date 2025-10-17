@@ -1,4 +1,5 @@
-import type { ChannelInitConfig, InternalLoggerConfig, LoggerConfig, LogLevel } from './@types/logger.types';
+import type { ChannelInitConfig, ConsoleChannelConfig, InternalLoggerConfig, LoggerConfig, LogLevel } from './@types/logger.types';
+import type { KVLogChannelConfig } from './channels/kv-channel';
 import { ChannelRegistry } from './channels/registry';
 import { getChannelOptions, getLoggerDefaults } from './logger.config';
 
@@ -16,15 +17,27 @@ export function createInternalLoggerConfig(config: LoggerConfig, production: boo
       throw new Error(`Channel definition not found for: ${init.channel}`);
     }
 
-    const factory = ChannelRegistry[channelDef.registry];
-    if (!factory) {
-      throw new Error(`Unknown registry type: ${channelDef.registry}`);
+    // Get environment-appropriate options using config logic
+    const options = getChannelOptions(channelDef.registry, production, channelDef.options as Record<string, unknown>, kv);
+
+    // Map-based channel factory lookup
+    const channelFactories = {
+      console: () =>
+        ChannelRegistry.console(init.level as LogLevel, options as ConsoleChannelConfig),
+      kv: () => {
+        if (!options.kv) {
+          throw new Error('KV namespace is required for KV channel');
+        }
+        return ChannelRegistry.kv(init.level as LogLevel, options as unknown as KVLogChannelConfig);
+      }
+    } as const;
+
+    const createChannel = channelFactories[channelDef.registry as keyof typeof channelFactories];
+    if (!createChannel) {
+      throw new Error(`Unsupported registry type: ${channelDef.registry}`);
     }
 
-    // Get environment-appropriate options using config logic
-    const options = getChannelOptions(channelDef.registry, production, channelDef.options, kv);
-
-    return factory(init.level as LogLevel, options);
+    return createChannel();
   });
 
   // Get environment defaults from config

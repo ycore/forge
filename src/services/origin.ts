@@ -48,7 +48,7 @@ export function getOriginDomain(context: Readonly<RouterContextProvider>, reques
   const bindings = getBindings(context);
 
   // Check for SITE_URL environment variable
-  const siteUrl = bindings.SITE_URL as string | undefined;
+  const siteUrl = bindings['SITE_URL' as keyof typeof bindings] as string | undefined;
   if (siteUrl) {
     return extractHostname(siteUrl);
   }
@@ -68,7 +68,7 @@ export function getOrigin(context: Readonly<RouterContextProvider>, request: Req
   const bindings = getBindings(context);
 
   // Check for SITE_URL environment variable
-  const siteUrl = bindings.SITE_URL as string | undefined;
+  const siteUrl = bindings['SITE_URL' as keyof typeof bindings] as string | undefined;
   if (siteUrl) {
     return extractOrigin(siteUrl);
   }
