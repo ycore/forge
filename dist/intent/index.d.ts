@@ -1,1 +1,0 @@
-export { Intent } from './Intent';
