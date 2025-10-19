@@ -1,15 +1,12 @@
-import type { AppLoadContext } from 'react-router';
+import type { AppLoadContext, RouterContext, RouterContextProvider } from 'react-router';
 import type { RequireContextOptions } from './@types/context.types';
 
 /**
  * Get a context value with optional default fallback
- *
- * @example
- * const theme = getContext(context, themeContext, 'light');
  */
-export function getContext<T>(context: AppLoadContext, contextKey: React.Context<T>): T | null;
-export function getContext<T>(context: AppLoadContext, contextKey: React.Context<T>, defaultValue: T): T;
-export function getContext<T>(context: AppLoadContext, contextKey: React.Context<T>, defaultValue?: T): T | null {
+export function getContext<T>(context: Readonly<AppLoadContext | RouterContextProvider>, contextKey: RouterContext<T>): T | null;
+export function getContext<T>(context: Readonly<AppLoadContext | RouterContextProvider>, contextKey: RouterContext<T>, defaultValue: T): T;
+export function getContext<T>(context: Readonly<AppLoadContext | RouterContextProvider>, contextKey: RouterContext<T>, defaultValue?: T): T | null {
   // @ts-expect-error - AppLoadContext.get returns unknown which is correct, but we know the type from the context key
   const value = context.get(contextKey);
 
@@ -21,20 +18,9 @@ export function getContext<T>(context: AppLoadContext, contextKey: React.Context
 }
 
 /**
- * Require a context value, throwing an error if not found
- * Use when the context MUST be present (e.g., from middleware)
- *
- * @example
- * const user = requireContext(context, userContext, {
- *   errorMessage: 'Authentication middleware not configured',
- *   errorStatus: 500
- * });
+ * Require a context value, throwing an error if not found - context MUST be present (e.g., from middleware)
  */
-export function requireContext<T>(
-  context: AppLoadContext,
-  contextKey: React.Context<T>,
-  options?: RequireContextOptions
-): NonNullable<T> {
+export function requireContext<T>(context: Readonly<AppLoadContext | RouterContextProvider>, contextKey: RouterContext<T>, options?: RequireContextOptions): NonNullable<T> {
   // @ts-expect-error - AppLoadContext.get returns unknown which is correct, but we know the type from the context key
   const value = context.get(contextKey);
 
@@ -47,4 +33,11 @@ export function requireContext<T>(
   }
 
   return value as NonNullable<T>;
+}
+
+/**
+ * Set a context value in React Router context
+ */
+export function setContext<T>(context: Readonly<RouterContextProvider> | RouterContextProvider, contextKey: RouterContext<T>, value: T): void {
+  (context as RouterContextProvider).set(contextKey, value);
 }
