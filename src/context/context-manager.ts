@@ -26,7 +26,7 @@ export function requireContext<T>(context: Readonly<AppLoadContext | RouterConte
 
   if (value === null || value === undefined) {
     const contextName = (contextKey as { displayName?: string }).displayName || 'Unknown';
-    const message = options?.errorMessage || `Required context '${contextName}' not found - middleware may not have run`;
+    const message = options?.errorMessage || `Required context '${contextName}' not found - middleware may have failed`;
     const status = options?.errorStatus || 500;
 
     throw new Response(message, { status, statusText: 'Internal Server Error' });
