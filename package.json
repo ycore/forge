@@ -8,6 +8,10 @@
     "url": "git+ssh://git@github.com/ycore/forge.git"
   },
   "exports": {
+    "./context": {
+      "types": "./dist/context/index.d.ts",
+      "import": "./dist/context/index.js"
+    },
     "./intent": {
       "types": "./dist/intent/index.d.ts",
       "import": "./dist/intent/index.js"
