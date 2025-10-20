@@ -1,5 +1,4 @@
-import type { ChannelInitConfig, ConsoleChannelConfig, InternalLoggerConfig, LoggerConfig, LogLevel } from './@types/logger.types';
-import type { KVLogChannelConfig } from './channels/kv-channel';
+import type { ChannelInitConfig, ConsoleChannelConfig, InternalLoggerConfig, KVLogChannelConfig, LoggerConfig, LogLevel } from './@types/logger.types';
 import { ChannelRegistry } from './channels/registry';
 import { getChannelOptions, getLoggerDefaults } from './logger.config';
 
@@ -22,14 +21,13 @@ export function createInternalLoggerConfig(config: LoggerConfig, production: boo
 
     // Map-based channel factory lookup
     const channelFactories = {
-      console: () =>
-        ChannelRegistry.console(init.level as LogLevel, options as ConsoleChannelConfig),
+      console: () => ChannelRegistry.console(init.level as LogLevel, options as ConsoleChannelConfig),
       kv: () => {
         if (!options.kv) {
           throw new Error('KV namespace is required for KV channel');
         }
         return ChannelRegistry.kv(init.level as LogLevel, options as unknown as KVLogChannelConfig);
-      }
+      },
     } as const;
 
     const createChannel = channelFactories[channelDef.registry as keyof typeof channelFactories];

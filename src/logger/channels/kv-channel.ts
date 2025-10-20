@@ -1,69 +1,78 @@
-import type { LogChannel, LogEntry } from '../@types/logger.types';
+import { nanoid } from 'nanoid';
+import type { KVLogChannelConfig, LogChannel, LogEntry, LogMetadata } from '../@types/logger.types';
 
-interface LogMetadata {
-  timestamp: string;
-  level: string;
-  count: number;
-}
+/** Type guard to check if metadata is valid LogMetadata */
+const isLogMetadata = (metadata: unknown): metadata is LogMetadata => {
+  return (
+    typeof metadata === 'object' &&
+    metadata !== null &&
+    'timestamp' in metadata &&
+    'level' in metadata &&
+    typeof metadata.timestamp === 'string' &&
+    typeof metadata.level === 'string'
+  );
+};
 
-const logEntryKvTemplate = (prefix: string, timestamp: number, count: number): string => `${prefix}${timestamp}-${count}`;
+/** Type guard to validate parsed log entry */
+const isLogEntry = (data: unknown): data is LogEntry => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'event' in data &&
+    'level' in data &&
+    'timestamp' in data &&
+    typeof data.event === 'string' &&
+    typeof data.level === 'string' &&
+    typeof data.timestamp === 'string'
+  );
+};
 
-export interface KVLogChannelConfig {
-  /** KV namespace to store logs */
-  kv: KVNamespace;
-  /** Maximum number of logs to keep in storage (default: 500) */
-  logsLimit?: number;
-  /** Trigger cleanup when logs exceed this number (default: 1000) */
-  logsTrigger?: number;
-  /** Log key prefix (default: 'log:') */
-  keyPrefix?: string;
-  /** Metadata key for log count (default: 'log_count') */
-  countKey?: string;
-}
+const logEntryKvTemplate = (prefix: string, timestamp: number, id: string): string => `${prefix}${timestamp}-${id}`;
 
 /**
  * Creates a KV-based log channel for Cloudflare Workers
  * Maintains logs with batched cleanup when trigger threshold is reached
  */
 export function createKVLogChannel(config: KVLogChannelConfig, minLevel: LogEntry['level'] = 'info'): LogChannel {
-  const { kv, logsLimit = 500, logsTrigger = 1000, keyPrefix = 'log:', countKey = 'log_count' } = config;
+  const { kv, logsLimit = 500, logsTrigger = 1000, keyPrefix = 'log:' } = config;
 
   return {
     name: 'kv-storage',
     minLevel,
     enabled: true,
     output: async (entry: LogEntry) => {
-      try {
-        // Get current log count
-        const currentCountStr = await kv.get(countKey);
-        const currentCount = currentCountStr ? Number.parseInt(currentCountStr, 10) : 0;
-        const nextCount = currentCount + 1;
+      const storeLog = async (): Promise<boolean> => {
+        try {
+          // Create unique key with timestamp for ordering + nanoid for uniqueness
+          const timestamp = new Date(entry.timestamp).getTime();
+          const uniqueId = nanoid(8); // 8 characters for compact yet collision-resistant IDs
+          const logKey = logEntryKvTemplate(keyPrefix, timestamp, uniqueId);
 
-        // Create unique key with timestamp for natural ordering (most recent first when listed)
-        const timestamp = new Date(entry.timestamp).getTime();
-        const logKey = logEntryKvTemplate(keyPrefix, timestamp, nextCount);
-
-        // Store log entry with metadata
-        await kv.put(logKey, JSON.stringify(entry), {
-          metadata: {
-            timestamp: entry.timestamp,
-            level: entry.level,
-            count: nextCount,
-          },
-        });
-
-        // Update the log count
-        await kv.put(countKey, nextCount.toString());
-
-        // Trigger cleanup if we've exceeded the trigger threshold
-        if (nextCount >= logsTrigger) {
-          // Don't await cleanup to avoid blocking log writing
-          cleanupOldLogs(kv, logsLimit, keyPrefix, countKey).catch(error => {
-            console.error('Failed to cleanup old logs:', error);
+          // Store log entry with metadata
+          await kv.put(logKey, JSON.stringify(entry), {
+            metadata: {
+              timestamp: entry.timestamp,
+              level: entry.level,
+            },
           });
+
+          return true;
+        } catch (_error) {
+          return false;
         }
-      } catch (error) {
-        console.error('Failed to store log in KV:', error);
+      };
+
+      try {
+        // Attempt to store log with a single immediate retry on failure
+        const stored = await storeLog();
+        if (!stored) await storeLog();
+
+        // Check cleanup every ~50 logs using random sampling - ~1 in 50 logs
+        // Silently ignore cleanup failures to prevent cascading errors
+        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => { });
+
+      } catch (_error) {
+        // Graceful degradation - Avoid logging the error details to prevent potential infinite loops
       }
     },
   };
@@ -81,9 +90,26 @@ async function batchDeleteKeys(kv: KVNamespace, keys: string[], batchSize = 100)
 }
 
 /**
- * Cleanup old logs when trigger threshold is reached
+ * Check if cleanup is needed and trigger if threshold exceeded
  */
-async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: string, countKey: string): Promise<void> {
+async function cleanupOldLogsIfNeeded(kv: KVNamespace, logsLimit: number, logsTrigger: number, keyPrefix: string): Promise<void> {
+  try {
+    // List with limit to see if trigger has been exceeded
+    const listResult = await kv.list({ prefix: keyPrefix, limit: logsTrigger + 1 });
+
+    if (listResult.keys.length <= logsTrigger) return;
+
+    // Crossed the trigger threshold, perform cleanup
+    await cleanupOldLogs(kv, logsLimit, keyPrefix);
+  } catch (_error) {
+    // Silently fail - cleanup is not critical
+  }
+}
+
+/**
+ * Cleanup old logs keeping only the most recent logsLimit entries
+ */
+async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: string): Promise<void> {
   try {
     // List all log keys
     const listResult = await kv.list({ prefix: keyPrefix });
@@ -92,68 +118,68 @@ async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: str
       return; // No cleanup needed
     }
 
-    // Sort keys by timestamp (oldest first for deletion)
-    const sortedKeys = listResult.keys
-      .filter(key => key.metadata && (key.metadata as LogMetadata).timestamp)
-      .sort((a, b) => {
-        const timestampA = new Date((a.metadata as LogMetadata).timestamp).getTime();
-        const timestampB = new Date((b.metadata as LogMetadata).timestamp).getTime();
-        return timestampA - timestampB; // Oldest first
-      });
+    // Filter and transform keys with valid metadata into a typed structure
+    const validKeys = listResult.keys
+      .filter((key): key is typeof key & { metadata: LogMetadata } =>
+        isLogMetadata(key.metadata)
+      )
+      .map(key => ({
+        name: key.name,
+        timestamp: new Date(key.metadata.timestamp).getTime(),
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp); // Oldest first
 
     // Delete excess logs (keep only logsLimit number of logs)
-    const logsToDelete = sortedKeys.slice(0, sortedKeys.length - logsLimit);
-    const keysToDelete = logsToDelete.map(key => key.name);
+    const keysToDelete = validKeys
+      .slice(0, Math.max(0, validKeys.length - logsLimit))
+      .map(key => key.name);
 
     // Batch delete operations to respect KV rate limits
-    await batchDeleteKeys(kv, keysToDelete);
-
-    // Update count after cleanup to maintain consistency
-    const remainingCount = sortedKeys.length - logsToDelete.length;
-    await kv.put(countKey, remainingCount.toString());
-
-    console.info(`Cleaned up ${logsToDelete.length} old logs, keeping ${logsLimit} most recent logs`);
+    if (keysToDelete.length > 0) {
+      await batchDeleteKeys(kv, keysToDelete);
+    }
   } catch (error) {
-    console.error('Failed to cleanup old logs:', error);
-    throw error;
+    // Silently fail - cleanup failures shouldn't impact logging
   }
 }
 
 /**
  * Retrieves logs from KV storage
  */
-export async function getLogsFromKV(
-  kv: KVNamespace,
-  options: {
-    limit?: number;
-    keyPrefix?: string;
-    countKey?: string;
-  } = {}
-): Promise<LogEntry[]> {
+export async function getLogsFromKV(kv: KVNamespace, options: { limit?: number; keyPrefix?: string } = {}): Promise<LogEntry[]> {
   const { limit = 100, keyPrefix = 'log:' } = options;
 
   try {
     // List all log keys
     const listResult = await kv.list({ prefix: keyPrefix });
 
-    if (!listResult.keys.length) {
+    if (listResult.keys.length === 0) {
       return [];
     }
 
-    // Sort keys by their metadata timestamp (newest first)
+    // Filter, sort, and limit keys with valid metadata
     const sortedKeys = listResult.keys
-      .filter(key => key.metadata && (key.metadata as LogMetadata).timestamp)
+      .filter((key): key is typeof key & { metadata: LogMetadata } =>
+        isLogMetadata(key.metadata)
+      )
       .sort((a, b) => {
-        const timestampA = new Date((a.metadata as LogMetadata).timestamp).getTime();
-        const timestampB = new Date((b.metadata as LogMetadata).timestamp).getTime();
+        const timestampA = new Date(a.metadata.timestamp).getTime();
+        const timestampB = new Date(b.metadata.timestamp).getTime();
         return timestampB - timestampA; // Newest first
       })
       .slice(0, limit);
 
-    // Fetch log entries
+    // Fetch and parse log entries
     const logPromises = sortedKeys.map(async key => {
       const logData = await kv.get(key.name);
-      return logData ? (JSON.parse(logData) as LogEntry) : null;
+      if (!logData) return null;
+
+      try {
+        const parsed = JSON.parse(logData);
+        return isLogEntry(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
     });
 
     const logs = await Promise.all(logPromises);
@@ -167,14 +193,8 @@ export async function getLogsFromKV(
 /**
  * Clears all logs from KV storage
  */
-export async function clearLogsFromKV(
-  kv: KVNamespace,
-  options: {
-    keyPrefix?: string;
-    countKey?: string;
-  } = {}
-): Promise<void> {
-  const { keyPrefix = 'log:', countKey = 'log_count' } = options;
+export async function clearLogsFromKV(kv: KVNamespace, options: { keyPrefix?: string; } = {}): Promise<void> {
+  const { keyPrefix = 'log:' } = options;
 
   try {
     // List all log keys
@@ -183,9 +203,6 @@ export async function clearLogsFromKV(
     // Delete all log entries using batching
     const keysToDelete = listResult.keys.map(key => key.name);
     await batchDeleteKeys(kv, keysToDelete);
-
-    // Reset the count
-    await kv.delete(countKey);
   } catch (error) {
     console.error('Failed to clear logs from KV:', error);
     throw error;

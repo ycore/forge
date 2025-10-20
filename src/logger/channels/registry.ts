@@ -1,7 +1,7 @@
-import type { ConsoleChannelConfig, LogLevel } from '../@types/logger.types';
+import type { ConsoleChannelConfig, KVLogChannelConfig, LogLevel } from '../@types/logger.types';
 import type { ConsoleChannelFactory, KVChannelFactory } from '../@types/registry.types';
 import { createConsoleChannel } from './console-channel';
-import { createKVLogChannel, type KVLogChannelConfig } from './kv-channel';
+import { createKVLogChannel } from './kv-channel';
 
 /**
  * Registry of available channel factories

@@ -1,5 +1,3 @@
-import type { KVLogChannelConfig } from '../channels/kv-channel';
-
 // RFC 5424 log levels in descending order of severity
 export type LogLevel = 'emergency' | 'alert' | 'critical' | 'error' | 'warning' | 'notice' | 'info' | 'debug';
 
@@ -58,6 +56,12 @@ export interface LogEntry {
   [key: string]: unknown;
 }
 
+// KV log metadata stored with each log entry
+export interface LogMetadata {
+  timestamp: string;
+  level: string;
+}
+
 // Internal logger configuration (after processing)
 export interface InternalLoggerConfig {
   defaultLevel: LogLevel;
@@ -94,4 +98,15 @@ export interface LoggerConfig {
       enableSanitization?: boolean;
     };
   };
+}
+
+export interface KVLogChannelConfig {
+  /** KV namespace to store logs */
+  kv: KVNamespace;
+  /** Maximum number of logs to keep in storage (default: 500) */
+  logsLimit?: number;
+  /** Trigger cleanup when logs exceed this number (default: 1000) */
+  logsTrigger?: number;
+  /** Log key prefix (default: 'log:') */
+  keyPrefix?: string;
 }

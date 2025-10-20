@@ -1,5 +1,4 @@
-import type { KVLogChannelConfig } from '../channels/kv-channel';
-import type { ConsoleChannelConfig, LogChannel, LogLevel } from './logger.types';
+import type { ConsoleChannelConfig, KVLogChannelConfig, LogChannel, LogLevel } from './logger.types';
 
 /**
  * Situation-based channel configuration
