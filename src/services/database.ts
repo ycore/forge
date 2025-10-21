@@ -58,9 +58,9 @@ export function getDatabase(context: Readonly<RouterContextProvider>) {
 class Logger implements LoggerInterface {
   logQuery(query: string, params: unknown[]): void {
     const cleanQuery = query
-      .replace(/\s*\n\s*/g, ' ')  // Remove newlines and surrounding whitespace
-      .replace(/"/g, '`')         // Replace double quotes with backticks
-      .replace(/\s+/g, ' ')       // Normalize multiple spaces to single space
+      .replace(/\s*\n\s*/g, ' ') // Remove newlines and surrounding whitespace
+      .replace(/"/g, '`') // Replace double quotes with backticks
+      .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
       .trim();
 
     logger.debug('SQL', { query: cleanQuery, params: params.length > 0 ? params : undefined });

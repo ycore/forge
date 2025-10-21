@@ -598,7 +598,7 @@ async function highlightCodeBlocks(htmlContent: string, highlighter: SyntaxHighl
       const codeSnippet = decodedContent.substring(0, 100).replace(/\n/g, '\\n');
       const errorContext = `Language: \`${language || 'text'}\`\n  Code snippet: "${codeSnippet}${decodedContent.length > 100 ? '...' : ''}"`;
 
-      console.error(`\n❌ Markdown Processing Error:`);
+      console.error('\n❌ Markdown Processing Error:');
       console.error(`  File: ${filePath || 'unknown'}`);
       console.error(`  ${errorContext}`);
       console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);

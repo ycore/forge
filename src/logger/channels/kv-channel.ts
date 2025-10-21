@@ -3,28 +3,12 @@ import type { KVLogChannelConfig, LogChannel, LogEntry, LogMetadata } from '../@
 
 /** Type guard to check if metadata is valid LogMetadata */
 const isLogMetadata = (metadata: unknown): metadata is LogMetadata => {
-  return (
-    typeof metadata === 'object' &&
-    metadata !== null &&
-    'timestamp' in metadata &&
-    'level' in metadata &&
-    typeof metadata.timestamp === 'string' &&
-    typeof metadata.level === 'string'
-  );
+  return typeof metadata === 'object' && metadata !== null && 'timestamp' in metadata && 'level' in metadata && typeof metadata.timestamp === 'string' && typeof metadata.level === 'string';
 };
 
 /** Type guard to validate parsed log entry */
 const isLogEntry = (data: unknown): data is LogEntry => {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'event' in data &&
-    'level' in data &&
-    'timestamp' in data &&
-    typeof data.event === 'string' &&
-    typeof data.level === 'string' &&
-    typeof data.timestamp === 'string'
-  );
+  return typeof data === 'object' && data !== null && 'event' in data && 'level' in data && 'timestamp' in data && typeof data.event === 'string' && typeof data.level === 'string' && typeof data.timestamp === 'string';
 };
 
 const logEntryKvTemplate = (prefix: string, timestamp: number, id: string): string => `${prefix}${timestamp}-${id}`;
@@ -69,8 +53,7 @@ export function createKVLogChannel(config: KVLogChannelConfig, minLevel: LogEntr
 
         // Check cleanup every ~50 logs using random sampling - ~1 in 50 logs
         // Silently ignore cleanup failures to prevent cascading errors
-        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => { });
-
+        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => {});
       } catch (_error) {
         // Graceful degradation - Avoid logging the error details to prevent potential infinite loops
       }
@@ -120,9 +103,7 @@ async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: str
 
     // Filter and transform keys with valid metadata into a typed structure
     const validKeys = listResult.keys
-      .filter((key): key is typeof key & { metadata: LogMetadata } =>
-        isLogMetadata(key.metadata)
-      )
+      .filter((key): key is typeof key & { metadata: LogMetadata } => isLogMetadata(key.metadata))
       .map(key => ({
         name: key.name,
         timestamp: new Date(key.metadata.timestamp).getTime(),
@@ -130,15 +111,13 @@ async function cleanupOldLogs(kv: KVNamespace, logsLimit: number, keyPrefix: str
       .sort((a, b) => a.timestamp - b.timestamp); // Oldest first
 
     // Delete excess logs (keep only logsLimit number of logs)
-    const keysToDelete = validKeys
-      .slice(0, Math.max(0, validKeys.length - logsLimit))
-      .map(key => key.name);
+    const keysToDelete = validKeys.slice(0, Math.max(0, validKeys.length - logsLimit)).map(key => key.name);
 
     // Batch delete operations to respect KV rate limits
     if (keysToDelete.length > 0) {
       await batchDeleteKeys(kv, keysToDelete);
     }
-  } catch (error) {
+  } catch (_error) {
     // Silently fail - cleanup failures shouldn't impact logging
   }
 }
@@ -159,9 +138,7 @@ export async function getLogsFromKV(kv: KVNamespace, options: { limit?: number; 
 
     // Filter, sort, and limit keys with valid metadata
     const sortedKeys = listResult.keys
-      .filter((key): key is typeof key & { metadata: LogMetadata } =>
-        isLogMetadata(key.metadata)
-      )
+      .filter((key): key is typeof key & { metadata: LogMetadata } => isLogMetadata(key.metadata))
       .sort((a, b) => {
         const timestampA = new Date(a.metadata.timestamp).getTime();
         const timestampB = new Date(b.metadata.timestamp).getTime();
@@ -193,7 +170,7 @@ export async function getLogsFromKV(kv: KVNamespace, options: { limit?: number; 
 /**
  * Clears all logs from KV storage
  */
-export async function clearLogsFromKV(kv: KVNamespace, options: { keyPrefix?: string; } = {}): Promise<void> {
+export async function clearLogsFromKV(kv: KVNamespace, options: { keyPrefix?: string } = {}): Promise<void> {
   const { keyPrefix = 'log:' } = options;
 
   try {

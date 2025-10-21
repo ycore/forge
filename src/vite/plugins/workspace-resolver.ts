@@ -16,7 +16,7 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
         if (statSync(workspacesPath).isDirectory()) {
           return workspacesPath;
         }
-      } catch { }
+      } catch {}
       cwd = resolve(cwd, '..');
     }
 
@@ -36,7 +36,7 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
   if (!prefix) {
     prefix = derivePrefix();
   }
-  const packageCache = new Map<string, { exports?: Record<string, unknown>;[key: string]: unknown }>();
+  const packageCache = new Map<string, { exports?: Record<string, unknown>; [key: string]: unknown }>();
   const discoveredWorkspacePackages = new Set<string>();
 
   function getPackageExports(pkgName: string) {
@@ -67,7 +67,7 @@ export function workspaceResolver(options: WorkspaceResolverOptions = {}): Plugi
             const scope = packageJson.name.split('/')[0];
             return `${scope}/`;
           }
-        } catch { }
+        } catch {}
       }
     } catch {
       // Fallback to common default

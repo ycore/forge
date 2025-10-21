@@ -132,17 +132,17 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
                 <ThemeSwitch spriteUrl={spriteUrl}>
                   {themeContext
                     ? ({ theme }: { theme: Themes }) => (
-                      <button
-                        type="button"
-                        className="size-5 hover:animate-rotate"
-                        aria-label="theme switch"
-                        onClick={() => {
-                          themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
-                        }}
-                      >
-                        {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon spriteUrl={spriteUrl} iconId="Moon" className="size-5" /> : <SpriteIcon spriteUrl={spriteUrl} iconId="Sun" className="size-5" />}
-                      </button>
-                    )
+                        <button
+                          type="button"
+                          className="size-5 hover:animate-rotate"
+                          aria-label="theme switch"
+                          onClick={() => {
+                            themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
+                          }}
+                        >
+                          {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon spriteUrl={spriteUrl} iconId="Moon" className="size-5" /> : <SpriteIcon spriteUrl={spriteUrl} iconId="Sun" className="size-5" />}
+                        </button>
+                      )
                     : undefined}
                 </ThemeSwitch>
               )}
