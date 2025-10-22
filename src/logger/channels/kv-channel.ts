@@ -11,49 +11,61 @@ const isLogEntry = (data: unknown): data is LogEntry => {
   return typeof data === 'object' && data !== null && 'event' in data && 'level' in data && 'timestamp' in data && typeof data.event === 'string' && typeof data.level === 'string' && typeof data.timestamp === 'string';
 };
 
-const logEntryKvTemplate = (prefix: string, timestamp: number, id: string): string => `${prefix}${timestamp}-${id}`;
+const logEntryKvTemplate = (prefix: string, timestamp: number, workerId: string, uniqueId: string, attemptSuffix: string): string => `${prefix}${timestamp}-${workerId}-${uniqueId}${attemptSuffix}`;
 
 /**
  * Creates a KV-based log channel for Cloudflare Workers
- * Maintains logs with batched cleanup when trigger threshold is reached
+ * Maintains logs with batched cleanup on threshold trigger
+ * Enhanced uniqueness strategy with exponential backoff for race condition mitigation
  */
 export function createKVLogChannel(config: KVLogChannelConfig, minLevel: LogEntry['level'] = 'info'): LogChannel {
   const { kv, logsLimit = 500, logsTrigger = 1000, keyPrefix = 'log:' } = config;
+
+  // Worker-unique identifier to prevent cross-worker collisions
+  const workerId = nanoid(6);
 
   return {
     name: 'kv-storage',
     minLevel,
     enabled: true,
     output: async (entry: LogEntry) => {
-      const storeLog = async (): Promise<boolean> => {
-        try {
-          // Create unique key with timestamp for ordering + nanoid for uniqueness
-          const timestamp = new Date(entry.timestamp).getTime();
-          const uniqueId = nanoid(8); // 8 characters for compact yet collision-resistant IDs
-          const logKey = logEntryKvTemplate(keyPrefix, timestamp, uniqueId);
+      const storeLogWithRetry = async (maxAttempts = 3): Promise<boolean> => {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // High-precision timestamp (microseconds) + worker ID + nanoid = collision-resistant
+            // Combines millisecond timestamp with microsecond precision from performance.now()
+            const timestamp = Date.now() * 1000 + Math.floor((performance.now() % 1) * 1000);
+            const uniqueId = nanoid(8); // 8 characters for compact yet collision-resistant IDs
+            const attemptSuffix = attempt > 0 ? `-r${attempt}` : '';
+            const logKey = logEntryKvTemplate(keyPrefix, timestamp, workerId, uniqueId, attemptSuffix);
 
-          // Store log entry with metadata
-          await kv.put(logKey, JSON.stringify(entry), {
-            metadata: {
-              timestamp: entry.timestamp,
-              level: entry.level,
-            },
-          });
+            // Store log entry with metadata
+            await kv.put(logKey, JSON.stringify(entry), {
+              metadata: {
+                timestamp: entry.timestamp,
+                level: entry.level,
+              },
+            });
 
-          return true;
-        } catch (_error) {
-          return false;
+            return true;
+          } catch (_error) {
+            // Exponential backoff with jitter on failure (5ms base, doubles each attempt)
+            if (attempt < maxAttempts - 1) {
+              const backoff = 2 ** attempt * 5 + Math.random() * 5;
+              await new Promise(resolve => setTimeout(resolve, backoff));
+            }
+          }
         }
+        return false;
       };
 
       try {
-        // Attempt to store log with a single immediate retry on failure
-        const stored = await storeLog();
-        if (!stored) await storeLog();
+        // Attempt to store log with exponential backoff retry strategy
+        await storeLogWithRetry();
 
         // Check cleanup every ~50 logs using random sampling - ~1 in 50 logs
         // Silently ignore cleanup failures to prevent cascading errors
-        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => {});
+        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => { });
       } catch (_error) {
         // Graceful degradation - Avoid logging the error details to prevent potential infinite loops
       }
@@ -84,9 +96,7 @@ async function cleanupOldLogsIfNeeded(kv: KVNamespace, logsLimit: number, logsTr
 
     // Crossed the trigger threshold, perform cleanup
     await cleanupOldLogs(kv, logsLimit, keyPrefix);
-  } catch (_error) {
-    // Silently fail - cleanup is not critical
-  }
+  } catch (_error) { } // Silently fail - cleanup is not critical
 }
 
 /**

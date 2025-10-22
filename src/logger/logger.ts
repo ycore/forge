@@ -224,12 +224,8 @@ export async function initLogger(options: InitLoggerOptions): Promise<boolean> {
     return false;
   }
 
-  const {
-    config,
-    store,
-    production = true, // Default to production for safety
-    startupCallback,
-  } = options;
+  // Default to production for safety
+  const { config, store, production = true, startupCallback } = options;
 
   // Create internal logger config from declarative config
   const finalConfig = createInternalLoggerConfig(config, production, store);
