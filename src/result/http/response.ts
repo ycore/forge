@@ -1,4 +1,4 @@
-import { data } from 'react-router';
+import { data, redirect } from 'react-router';
 import type { AppError, RespondCallbacks, ResponseMeta, Result } from '../@types/result.types';
 import { isError } from '../core/result';
 
@@ -34,4 +34,20 @@ export function respondError(error: AppError, meta?: ResponseMeta, ...callbacks:
   const status = meta?.status ?? error.status ?? 400;
 
   return respond(error, { ...meta, status }, ...callbacks);
+}
+
+/**
+ * Redirect with optional headers (e.g., Set-Cookie)
+ * Use this for successful form submissions that require navigation
+ */
+export function respondRedirect(path: string, meta?: ResponseMeta): never {
+  throw redirect(path, { status: meta?.status ?? 302, headers: meta?.headers });
+}
+
+/**
+ * Throw a system error to error boundary
+ * Use for unrecoverable errors that should not be shown in forms/toasts
+ */
+export function throwSystemError(message: string, status: 500 | 503 | 502 = 500): never {
+  throw new Response(message, { status });
 }

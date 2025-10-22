@@ -155,3 +155,36 @@ export function badRequestError(message: string, details?: Record<string, unknow
 export function serverError(message = 'Internal server error', cause?: Error): AppError {
   return err(message, undefined, { cause, code: 'INTERNAL_ERROR', status: 500 });
 }
+
+/**
+ * Check if an error is a system error (5xx status codes)
+ * System errors should typically be thrown to error boundaries
+ */
+export function isSystemError(error: AppError): boolean {
+  return (error.status ?? 0) >= 500;
+}
+
+/**
+ * Check if an error is a user error (4xx status codes or no status)
+ * User errors should be displayed in the UI (forms, toasts, etc.)
+ */
+export function isUserError(error: AppError): boolean {
+  const status = error.status ?? 400; // Default to user error if no status
+  return status < 500;
+}
+
+/**
+ * Create a service unavailable error (503)
+ * Use for external service failures, database connection issues, etc.
+ */
+export function serviceUnavailableError(message = 'Service temporarily unavailable', cause?: Error): AppError {
+  return err(message, undefined, { cause, code: 'SERVICE_UNAVAILABLE', status: 503 });
+}
+
+/**
+ * Create a configuration error (500)
+ * Use for missing or invalid application configuration
+ */
+export function configError(message: string, details?: Record<string, unknown>): AppError {
+  return err(message, details, { code: 'CONFIG_ERROR', status: 500 });
+}
