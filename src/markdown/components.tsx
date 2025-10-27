@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: acceptable */
 import { SpriteIcon } from '@ycore/componentry/images';
 import { LoadingBar } from '@ycore/componentry/impetus';
-import type { Themes } from '@ycore/componentry/impetus/theme';
 import { ThemeSwitch } from '@ycore/componentry/impetus/theme';
 import { type IconName, Link } from '@ycore/componentry/vibrant';
 import clsx from 'clsx';
@@ -43,7 +42,7 @@ const isMarkdownPageData = (data: unknown): data is MarkdownPageData => {
 /**
  * Main documentation page component with sidebar navigation and document viewer
  */
-export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPageProps) {
+export function MarkdownPage({ loaderData, spriteUrl }: MarkdownPageProps) {
   // Handle both data structures: array of docs or structured page data
   const pageData = isMarkdownPageData(loaderData) ? loaderData : { manifest: loaderData, selectedDoc: undefined, document: undefined };
   const { manifest: docs, selectedDoc: preloadedDoc, document: preloadedDocument, loading: serverLoading } = pageData;
@@ -53,10 +52,7 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
   const [selectedDoc, setSelectedDoc] = useState<string | null>(preloadedDoc || null);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const fetcher = useFetcher();
-
-  useEffect(() => setMounted(true), []);
 
   const handleDocSelect = useCallback(
     (slug: string) => {
@@ -108,9 +104,10 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 top-0 left-0 z-20 overflow-y-auto border-gray-200 border-r bg-white transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900 ${sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'} w-80`}
+          className={`fixed inset-y-0 top-0 left-0 z-20 flex w-80 flex-col border-gray-200 border-r bg-white transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900 ${sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'}`}
         >
-          <div className="p-6">
+          {/* Scrollable navigation area */}
+          <div className="flex-1 overflow-y-auto p-6 pb-20">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-lg dark:text-white">Documentation</h2>
               <div>
@@ -122,30 +119,15 @@ export function MarkdownPage({ loaderData, spriteUrl, themeContext }: MarkdownPa
             <nav className="space-y-1" aria-label="Documentation navigation">
               {docs.length === 0 ? <DocListEmpty /> : <DocList docs={docs} selectedDoc={selectedDoc} onDocSelect={handleDocSelect} spriteUrl={spriteUrl} />}
             </nav>
-            <div className="fixed right-4 bottom-4 z-10 flex items-center justify-between gap-x-4">
+          </div>
+
+          {/* Sticky footer */}
+          <div className="border-gray-200/50 border-t p-4 backdrop-blur-sm dark:border-gray-800/50">
+            <div className="flex items-center justify-end gap-x-3">
               <Link href="/">
-                <SpriteIcon<IconName> spriteUrl={spriteUrl} iconId="House" className="size-5 text-accent-foreground" viewBox="0 0 24 24" />
+                <SpriteIcon<IconName> spriteUrl={spriteUrl} iconId="House" className="size-5 text-accent-foreground transition-colors hover:text-accent-foreground/80" viewBox="0 0 24 24" />
               </Link>
-              {!mounted ? (
-                <div className="size-5" />
-              ) : (
-                <ThemeSwitch spriteUrl={spriteUrl}>
-                  {themeContext
-                    ? ({ theme }: { theme: Themes }) => (
-                        <button
-                          type="button"
-                          className="size-5 hover:animate-rotate"
-                          aria-label="theme switch"
-                          onClick={() => {
-                            themeContext.setTheme(themeContext.resolvedTheme === theme.theme.dark ? theme.theme.light : theme.theme.dark);
-                          }}
-                        >
-                          {themeContext.resolvedTheme === theme.theme.dark ? <SpriteIcon spriteUrl={spriteUrl} iconId="Moon" className="size-5" /> : <SpriteIcon spriteUrl={spriteUrl} iconId="Sun" className="size-5" />}
-                        </button>
-                      )
-                    : undefined}
-                </ThemeSwitch>
-              )}
+              <ThemeSwitch spriteUrl={spriteUrl} />
             </div>
           </div>
         </aside>
