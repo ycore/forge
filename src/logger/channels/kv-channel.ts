@@ -65,7 +65,7 @@ export function createKVLogChannel(config: KVLogChannelConfig, minLevel: LogEntr
 
         // Check cleanup every ~50 logs using random sampling - ~1 in 50 logs
         // Silently ignore cleanup failures to prevent cascading errors
-        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => { });
+        if (Math.random() < 0.02) cleanupOldLogsIfNeeded(kv, logsLimit, logsTrigger, keyPrefix).catch(() => {});
       } catch (_error) {
         // Graceful degradation - Avoid logging the error details to prevent potential infinite loops
       }
@@ -96,7 +96,7 @@ async function cleanupOldLogsIfNeeded(kv: KVNamespace, logsLimit: number, logsTr
 
     // Crossed the trigger threshold, perform cleanup
     await cleanupOldLogs(kv, logsLimit, keyPrefix);
-  } catch (_error) { } // Silently fail - cleanup is not critical
+  } catch (_error) {} // Silently fail - cleanup is not critical
 }
 
 /**
