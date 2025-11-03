@@ -17,7 +17,7 @@ import { ASSET_ROUTES } from './markdown-config';
  * Simple markdown content renderer component
  * Renders pre-sanitized HTML content from markdown processing
  */
-export function MarkdownRenderer({ children, className = '' }: MarkdownProps) {
+export function MarkdownRenderer({ children, className = '' }: MarkdownProps): React.JSX.Element {
   if (!children || typeof children !== 'string') {
     return <div className={className} />;
   }
@@ -42,7 +42,7 @@ const isMarkdownPageData = (data: unknown): data is MarkdownPageData => {
 /**
  * Main documentation page component with sidebar navigation and document viewer
  */
-export function MarkdownPage({ loaderData, spriteUrl }: MarkdownPageProps) {
+export function MarkdownPage({ loaderData, spriteUrl }: MarkdownPageProps): React.JSX.Element {
   // Handle both data structures: array of docs or structured page data
   const pageData = isMarkdownPageData(loaderData) ? loaderData : { manifest: loaderData, selectedDoc: undefined, document: undefined };
   const { manifest: docs, selectedDoc: preloadedDoc, document: preloadedDocument, loading: serverLoading } = pageData;
