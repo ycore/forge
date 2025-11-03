@@ -1,3 +1,5 @@
+/// <reference path="../@types/worker-runtime.d.ts" />
+
 import type { ChannelInitConfig, ConsoleChannelConfig, InternalLoggerConfig, KVLogChannelConfig, LoggerConfig, LogLevel } from './@types/logger.types';
 import { ChannelRegistry } from './channels/registry';
 import { getChannelOptions, getLoggerDefaults } from './logger.config';

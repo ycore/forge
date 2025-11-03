@@ -1,3 +1,5 @@
+/// <reference path="../../@types/worker-runtime.d.ts" />
+
 // RFC 5424 log levels in descending order of severity
 export type LogLevel = 'emergency' | 'alert' | 'critical' | 'error' | 'warning' | 'notice' | 'info' | 'debug';
 

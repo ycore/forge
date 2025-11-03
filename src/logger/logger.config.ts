@@ -1,3 +1,5 @@
+/// <reference path="../@types/worker-runtime.d.ts" />
+
 import type { LoggerConfig, LogLevel } from './@types/logger.types';
 
 // RFC 5424 log level hierarchy (higher number = higher severity)

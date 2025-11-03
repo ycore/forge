@@ -1,3 +1,5 @@
+/// <reference path="../@types/worker-runtime.d.ts" />
+
 /** biome-ignore-all lint/suspicious/noExplicitAny: acceptable */
 import type { BaseLogParams, InternalLoggerConfig, LogArgs, LogEntry, Logger, LoggerConfig, LogLevel, LogParams } from './@types/logger.types';
 import { shouldLog } from './logger.config';

@@ -1,3 +1,5 @@
+/// <reference path="../../@types/worker-runtime.d.ts" />
+
 import { nanoid } from 'nanoid';
 import type { KVLogChannelConfig, LogChannel, LogEntry, LogMetadata } from '../@types/logger.types';
 

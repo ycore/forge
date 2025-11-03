@@ -1,3 +1,5 @@
+/// <reference path="../@types/worker-runtime.d.ts" />
+
 import type { RouterContextProvider } from 'react-router';
 import type { KVBindings } from './@types/cloudflare.types';
 import { getBindings } from './cloudflare';
