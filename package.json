@@ -71,7 +71,7 @@
     "src"
   ],
   "dependencies": {
-    "nanoid": "^5.1.5"
+    "nanoid": "^5.1.6"
   },
   "peerDependencies": {
     "clsx": ">= 2.1.0 < 3",
@@ -85,8 +85,8 @@
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/react": "^19.1.13",
-    "vite": "^7.1.6"
+    "@types/react": "^19.2.2",
+    "vite": "^7.1.12"
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
