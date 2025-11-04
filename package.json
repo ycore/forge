@@ -73,6 +73,11 @@
   "dependencies": {
     "nanoid": "^5.1.6"
   },
+  "devDependencies": {
+    "@total-typescript/tsconfig": "^1.0.4",
+    "@types/react": "^19.2.2",
+    "vite": "^7.1.12"
+  },
   "peerDependencies": {
     "clsx": ">= 2.1.0 < 3",
     "drizzle-orm": ">= 0.38.0 < 1",
@@ -83,10 +88,19 @@
     "react-router": ">= 7.6.0 < 8",
     "shiki": ">= 3.7.0 < 4"
   },
-  "devDependencies": {
-    "@total-typescript/tsconfig": "^1.0.4",
-    "@types/react": "^19.2.2",
-    "vite": "^7.1.12"
+  "peerDependenciesMeta": {
+    "drizzle-orm": {
+      "optional": true
+    },
+    "isomorphic-dompurify": {
+      "optional": true
+    },
+    "marked": {
+      "optional": true
+    },
+    "shiki": {
+      "optional": true
+    }
   },
   "scripts": {
     "clean": "rm -rf dist node_modules",
