@@ -30,21 +30,6 @@
         "import": "./src/logger/plugin/index.ts"
       }
     },
-    "./markdown": {
-      "types": "./src/markdown/index.ts",
-      "import": "./src/markdown/index.ts"
-    },
-    "./markdown/server": {
-      "types": "./src/markdown/server/index.ts",
-      "import": "./src/markdown/server/index.ts"
-    },
-    "./markdown/plugin": {
-      "node": {
-        "types": "./src/markdown/plugin/index.ts",
-        "import": "./src/markdown/plugin/index.ts"
-      }
-    },
-    "./markdown/styles/markdown.css": "./src/markdown/styles/markdown.css",
     "./services": {
       "types": "./src/services/index.ts",
       "import": "./src/services/index.ts"
@@ -81,24 +66,12 @@
   "peerDependencies": {
     "clsx": ">= 2.1.0 < 3",
     "drizzle-orm": ">= 0.38.0 < 1",
-    "isomorphic-dompurify": ">= 2.26.0 < 3",
-    "marked": ">= 16.0.0 < 17",
     "react": ">= 19.1.0 < 20",
     "react-dom": ">= 19.1.0 < 20",
-    "react-router": ">= 7.6.0 < 8",
-    "shiki": ">= 3.7.0 < 4"
+    "react-router": ">= 7.6.0 < 8"
   },
   "peerDependenciesMeta": {
     "drizzle-orm": {
-      "optional": true
-    },
-    "isomorphic-dompurify": {
-      "optional": true
-    },
-    "marked": {
-      "optional": true
-    },
-    "shiki": {
       "optional": true
     }
   },
