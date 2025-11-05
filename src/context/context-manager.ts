@@ -1,5 +1,22 @@
-import type { AppLoadContext, RouterContext, RouterContextProvider } from 'react-router';
+import { type AppLoadContext, createContext, type RouterContext, type RouterContextProvider } from 'react-router';
 import type { RequireContextOptions } from './@types/context.types';
+
+const CONTEXT_REGISTRY = new Map<string, RouterContext<any>>();
+
+/**
+ * Create a singleton React Router context that persists across bundled packages
+ */
+export function createContextSingleton<T>(name: string, defaultValue: T): RouterContext<T> {
+  if (CONTEXT_REGISTRY.has(name)) {
+    return CONTEXT_REGISTRY.get(name)!;
+  }
+
+  const context = createContext<T>(defaultValue);
+  (context as any).displayName = name;
+  CONTEXT_REGISTRY.set(name, context);
+
+  return context;
+}
 
 /**
  * Get a context value with optional default fallback

@@ -1,2 +1,2 @@
 export type { ContextManager, RequireContextOptions } from './@types/context.types';
-export { getContext, requireContext, setContext } from './context-manager';
+export { createContextSingleton, getContext, requireContext, setContext } from './context-manager';
