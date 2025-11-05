@@ -1,6 +1,14 @@
-import { createContext, type RouterContextProvider } from 'react-router';
+import type { RouterContextProvider } from 'react-router';
 
-export const CloudflareContext = createContext<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>({} as { env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties });
+import { createContextSingleton } from '../context/context-manager';
+
+/**
+ * Cloudflare context - singleton pattern to prevent context duplication
+ */
+export const CloudflareContext = createContextSingleton<{ env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }>(
+  'CloudflareContext',
+  {} as { env: Cloudflare.Env; ctx: ExecutionContext; cf?: RequestInitCfProperties }
+);
 
 export function getBindings(context: Readonly<RouterContextProvider>) {
   return context.get(CloudflareContext).env;

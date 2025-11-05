@@ -1,7 +1,8 @@
 import { drizzle } from 'drizzle-orm/d1';
 import type { Logger as LoggerInterface } from 'drizzle-orm/logger';
-import { createContext, type RouterContextProvider } from 'react-router';
+import type { RouterContextProvider } from 'react-router';
 
+import { createContextSingleton } from '../context/context-manager';
 import { logger } from '../logger/logger';
 
 type DatabaseWithSchema<TSchema extends Record<string, unknown>> = ReturnType<typeof drizzle<TSchema>>;
@@ -12,8 +13,10 @@ export interface DatabaseConfig<TSchema extends Record<string, unknown>> {
   enableLogging?: boolean;
 }
 
-// Create typed database context
-export const DatabaseContext = createContext<DatabaseWithSchema<Record<string, unknown>> | null>(null);
+/**
+ * Typed database context - singleton pattern to prevent context duplication
+ */
+export const DatabaseContext = createContextSingleton<DatabaseWithSchema<Record<string, unknown>> | null>('DatabaseContext', null);
 
 /**
  * Create a typed database connection from Cloudflare environment and binding config

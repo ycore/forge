@@ -1,4 +1,6 @@
-import { createContext, type RouterContextProvider } from 'react-router';
+import type { RouterContextProvider } from 'react-router';
+
+import { createContextSingleton } from '../context/context-manager';
 
 /**
  * Environment type definition
@@ -6,9 +8,9 @@ import { createContext, type RouterContextProvider } from 'react-router';
 export type Environment = 'development' | 'production' | 'test';
 
 /**
- * Environment context for storing the current environment state
+ * Environment context - singleton pattern to prevent context duplication
  */
-export const EnvironmentContext = createContext<Environment>('development');
+export const EnvironmentContext = createContextSingleton<Environment>('EnvironmentContext', 'development');
 
 /**
  * Get the current environment from context
